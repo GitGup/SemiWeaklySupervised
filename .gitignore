@@ -1,0 +1,10 @@
+.DS_store
+.ipynb_checkpoints
+*.npy
+*.csv
+*.hdf
+*.pickle
+__pycache__/
+wandb/
+pickled/
+plots/

@@ -22,3 +22,11 @@ Semi-weakly-supervised resonant anomaly detection, using physics priors and qcd 
 - **Anomaly**: Continuation of original notebook, working file...
 
 --------------------------------------------------------------------------------
+
+**Python Custom Modules**:
+
+- **config.py**: wandb configs for model parameters
+
+- **models.py**: tensorflow model creation
+
+--------------------------------------------------------------------------------

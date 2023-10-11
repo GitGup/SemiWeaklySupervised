@@ -25,3 +25,9 @@ class MyModel(Model):
         x = self.dense4(x)
         
         return x
+    
+def createSimpleModel(weight):
+    input_layer = tf.keras.Input(shape=(1,))
+    simple_model = Dense(1,use_bias = False,activation="relu",kernel_initializer=tf.keras.initializers.Constant(weight))(input_layer)
+    model = Model(inputs=input_layer, outputs=simple_model)
+    return model

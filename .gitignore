@@ -10,3 +10,5 @@ pickled/
 plots/
 model_all_BCE/
 model_all_MSE/
+model_BCE/
+model_MSE/

@@ -4,9 +4,4 @@
 *.csv
 *.hdf
 *.pickle
-__pycache__/
-wandb/
-pickled/
-plots/
-/model*/
-
+*/

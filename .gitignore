@@ -4,4 +4,7 @@
 *.csv
 *.hdf
 *.pickle
+*.gif
+*.txt
+*.h5
 */

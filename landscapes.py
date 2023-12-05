@@ -3,6 +3,8 @@ import os
 from IPython.display import display, clear_output
 from PIL import Image, ImageSequence
 
+from mpl_toolkits.mplot3d import Axes3D
+
 mass_range = [0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
 
 #create loss landscape for specific s/b and mass pair
@@ -150,3 +152,46 @@ def create_gif_nofit(m1, m2, z):
     # Create the final GIF that combines all frames
     output_gif_filename = f'sigspace{m1}{m2}fixed.gif'
     frames[0].save(output_gif_filename, save_all=True, append_images=frames[1:], duration=400, loop=0)
+    
+    
+#Loss Landscape but 3D
+def create_3D_loss_manifold(sigfrac, m1, m2):
+
+    start = 0.5
+    end = 6
+    step = 0.25
+
+    weight_list = np.arange(start, end + step, step)
+
+    grid_axes = []
+    for w1 in weight_list:
+        for w2 in weight_list:
+            grid_axes.append((w1, w2))
+
+    w1_values, w2_values = zip(*grid_axes)
+
+    loss_values = list(z_allm1m2_HD[sigfrac, m1, m2])
+
+    x = w1_values
+    y = w2_values
+    z = loss_values
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    ax.scatter(x, y, z, c='r', marker='.', alpha = 0.3)
+    ax.plot_trisurf(x, y, z, cmap='viridis', edgecolor='none')
+
+    ax.set_xlabel('W1')
+    ax.set_ylabel('W2')
+    ax.set_zlabel('Loss Label')
+    ax.set_title(f"3D Loss Manifold m1: {m1} m2: {m2} sigfrac: {np.round(sigfrac, 5)}")
+
+    ax.xaxis.pane.fill = False
+    ax.yaxis.pane.fill = False
+    ax.zaxis.pane.fill = False
+
+    ax.grid(False)
+    
+    ax.view_init(elev=30, azim=10)
+    plt.show()

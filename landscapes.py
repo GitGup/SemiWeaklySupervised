@@ -125,7 +125,7 @@ def create_loss_landscape_6Features(model, m1, m2):
 
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_vals_, y_vals_, test_size=0.5, random_state = 42)
 
-                loss = model_all2.evaluate(x_vals_, y_vals_, verbose = 0)
+                loss = model_all2.evaluate(X_val_, Y_val_, verbose = 0)
                 losses_list.append(loss)
                 
         if key in z:

@@ -13,10 +13,17 @@ mass_range = [0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
 def loss_landscape_nofit(sigfrac, m1, m2, z):
     
     #create grid of points for the model to be evaluated at
-    #current resolutionis 12 * 12 = 144
+    #current resolution is 12 * 12 = 144
+    
+    start = 0.5
+    end = 6
+    step = 0.25
+
+    weight_list = np.arange(start, end + step, step)
+    
     grid_axes = []
-    for w1 in mass_range:
-        for w2 in mass_range:
+    for w1 in weight_list:
+        for w2 in weight_list:
             grid_axes.append((w1, w2))
             
     w1_values, w2_values = zip(*grid_axes)
@@ -30,14 +37,14 @@ def loss_landscape_nofit(sigfrac, m1, m2, z):
 
     normalized_loss = [(x - min_loss) / (max_loss - min_loss) for x in loss_values]
     
-    h = plt.hist2d(w1_values, w2_values, bins=(12, 12), cmap='viridis', weights=normalized_loss)
+    h = plt.hist2d(w1_values, w2_values, bins=(23,23), cmap='viridis', weights=normalized_loss)
     plt.scatter(*star1_coords, c='red', marker='*', s=200, label='Star 1')
     plt.scatter(*star2_coords, c='blue', marker='*', s=200, label='Star 2')
     plt.colorbar(label='Loss (BCE)')
 
     plt.xlabel('m1')
     plt.ylabel('m2')
-    plt.title('(m1 = {} | m2 = {}) sigfrac: {:.4f}'.format(m1, m2, sigfrac))
+    plt.title('6 Features (m1 = {} | m2 = {}) sigfrac: {:.4f}'.format(m1, m2, sigfrac))
     return h
 
 def create_loss_landscape_6Features(model, m1, m2):

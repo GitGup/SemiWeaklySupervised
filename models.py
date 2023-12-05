@@ -7,7 +7,7 @@ def createSimpleModel(weight):
     model = Model(inputs=input_layer, outputs=simple_model)
     return model
 
-def train_wsmodel(sigfrac, m1, m2, w1, w2, epochs):
+def train_wsmodel(model, sigfrac, m1, m2, w1, w2, epochs):
 
     sig_list = []
     w1_list = []
@@ -19,7 +19,7 @@ def train_wsmodel(sigfrac, m1, m2, w1, w2, epochs):
 
     sigfrac = sigfrac
     print("Signal Fraction: ", sigfrac)
-    for l in model_all_BCE.layers:
+    for l in model.layers:
         l.trainable=False
 
     model3 = createSimpleModel(w1)
@@ -31,7 +31,7 @@ def train_wsmodel(sigfrac, m1, m2, w1, w2, epochs):
 
     inputs = tf.keras.Input(shape=(4,))
     inputs2 = tf.keras.layers.concatenate([inputs,model3(tf.ones_like(inputs)[:,0]),model32(tf.ones_like(inputs)[:,0])])
-    hidden_layer_1 = model_all_BCE(inputs2)
+    hidden_layer_1 = model(inputs2)
     LLR = hidden_layer_1 / (1.- hidden_layer_1 + epsilon)
     LLR_xs = 1 + sigfrac * LLR - sigfrac
     #LLR_xs = 1. + model33(tf.ones_like(inputs)[:,0]) * LLR

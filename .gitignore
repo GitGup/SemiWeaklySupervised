@@ -10,5 +10,8 @@
 *.out
 *.sh
 *.pyc
+*.npz
+*.png
+*.pkl
 */
 pscratch

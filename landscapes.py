@@ -4,6 +4,7 @@ from IPython.display import display, clear_output
 from PIL import Image, ImageSequence
 
 from mpl_toolkits.mplot3d import Axes3D
+import sys
 
 mass_range = [0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
 
@@ -13,7 +14,7 @@ mass_range = [0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
 def loss_landscape_nofit(sigfrac, m1, m2, z):
     
     #create grid of points for the model to be evaluated at
-    #current resolution is 12 * 12 = 144
+    #current resolution is 23 * 23 = 529
     
     start = 0.5
     end = 6
@@ -52,11 +53,11 @@ def create_loss_landscape_6Features(model, m1, m2):
     Nfeatures = 6
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"z_allm1m2_{Nfeatures}Features.npy"
+    file_name = "z_allm1m2_{}Features.npy".format(Nfeatures)
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
-        z = np.load(f"z_allm1m2_{Nfeatures}Features.npy", allow_pickle = True).item()
+        z = np.load(file_name, allow_pickle = True).item()
     else:
         print("Dictionary doesn't exist, creating one...")
         z = {}
@@ -133,7 +134,7 @@ def create_loss_landscape_6Features(model, m1, m2):
         else:
             z[sigfrac, m1, m2] = losses_list
             losses_list = []
-            np.save(f"z_allm1m2_{NFeatures}Features", z)
+            np.save(filename, z)
 
 #animate loss landscape over different signal fractions
 def create_gif_nofit(m1, m2, z):
@@ -148,7 +149,7 @@ def create_gif_nofit(m1, m2, z):
     
         loss_landscape_nofit(sb, m1, m2, z)
 
-        image_path = os.path.join(output_directory, f'hist_{sigfrac}.png')
+        image_path = os.path.join(output_directory, 'hist_{}.png'.format(sb))
         plt.savefig(image_path)
         plt.close()
         clear_output(wait=True)
@@ -157,7 +158,7 @@ def create_gif_nofit(m1, m2, z):
         frames.append(Image.open(image_path))
 
     # Create the final GIF that combines all frames
-    output_gif_filename = f'sigspace{m1}{m2}fixed.gif'
+    output_gif_filename = 'sigspace{}{}fixed.gif'.format(m1, m2)
     frames[0].save(output_gif_filename, save_all=True, append_images=frames[1:], duration=400, loop=0)
     
     
@@ -192,7 +193,7 @@ def create_3D_loss_manifold(sigfrac, m1, m2):
     ax.set_xlabel('W1')
     ax.set_ylabel('W2')
     ax.set_zlabel('Loss Label')
-    ax.set_title(f"3D Loss Manifold m1: {m1} m2: {m2} sigfrac: {np.round(sigfrac, 5)}")
+    ax.set_title("3D Loss Manifold m1: {} m2: {} sigfrac: {np.round(sigfrac, 5)}".format(m1, m2))
 
     ax.xaxis.pane.fill = False
     ax.yaxis.pane.fill = False
@@ -202,3 +203,19 @@ def create_3D_loss_manifold(sigfrac, m1, m2):
     
     ax.view_init(elev=30, azim=10)
     plt.show()
+
+if __name__ == "__main__":
+    if len(sys.argv) != 4:
+        print("Usage: python script.py <model> <m1> <m2>")
+        sys.exit(1)
+    
+    arg1 = sys.argv[1]
+    arg2 = int(sys.argv[2])
+    arg3 = int(sys.argv[3])
+
+    print("Creating 6 Feature Landscape using {}, with mass pair, m1, m2 = {}{}".format(arg1, arg2, arg3))
+    create_loss_landscape_6Features(arg1, arg2, arg3)
+    
+    z_allm1m2_HD = np.load("z_allm1m2_6FeaturesHD.npy", allow_pickle = True).item()
+    create_gif_nofit(z_allm1m2_HD, arg2, arg3)
+    print("Saved Loss Evolution")

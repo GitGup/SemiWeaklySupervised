@@ -13,6 +13,8 @@
 *.npz
 *.png
 *.pkl
+*.tar.gz
+*.zip
 */
 test.ipynb
 pscratch

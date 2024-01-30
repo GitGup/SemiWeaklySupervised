@@ -126,19 +126,3 @@ def eval_semiweakly(model, sigfrac, w1, w2, m1, m2):
     with tf.device('/GPU:0'):
         loss = model_all2.evaluate(X_val_, Y_val_, verbose = 0)
     return loss
-
-def pred_accuracy(y_test, scores):
-    background_count, signal_count = 0, 0
-
-    predictions_list = []
-    for pred in scores:
-        #arbitrary cutoff of 0.5
-        if float(pred) > 0.5:
-            predictions_list.append(int(1))
-            signal_count+=1
-        elif float(pred) < 0.5:
-            predictions_list.append(int(0))
-            background_count+=1
-            
-    accuracy = np.mean(predictions_list == y_test)
-    return accuracy

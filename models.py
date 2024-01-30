@@ -42,7 +42,7 @@ class WeightConstraint(Constraint):
         return {'min_value': self.min_value, 'max_value': self.max_value}
 
 #SemiWeak Model
-def compileSemiWeakly(feature_dims, params, m1, m2, w1, w2):
+def compileSemiWeakly(model, feature_dims, params, m1, m2, w1, w2):
     
     inputs_hold = tf.keras.Input(shape=(1,))
     simple_model = Dense(1,use_bias = False,activation='relu',kernel_initializer=tf.keras.initializers.Constant(w1), kernel_constraint=WeightConstraint())(inputs_hold)
@@ -60,7 +60,7 @@ def compileSemiWeakly(feature_dims, params, m1, m2, w1, w2):
     inputs2 = tf.keras.layers.concatenate([inputs,model3(tf.ones_like(inputs)[:,0]),model32(tf.ones_like(inputs)[:,0])])
 
     #physics prior
-    hidden_layer_1 = model_qq(inputs2)
+    hidden_layer_1 = model(inputs2)
     LLR = hidden_layer_1 / (1.-hidden_layer_1 + epsilon)
 
     if params == 2:

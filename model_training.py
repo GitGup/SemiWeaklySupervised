@@ -15,18 +15,18 @@ x_data_qq = np.load("x_parametrized_data_qq.npy")
 y_data_qq = np.load("y_parametrized_data_qq.npy")
 X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 42)
 
-pscratch_dir = "/pscratch/sd/g/gupsingh"
+pscratch_dir = "/pscratch/sd/g/gupsingh/"
 os.environ["WANDB_DIR"] = pscratch_dir
 
 config = {
     "layer_1_neurons": 256,
-    "layer_2_neurons": 256,
-    "layer_3_neurons": 256,
+    "layer_2_neurons": 128,
+    "layer_3_neurons": 64,
     "output_neurons": 1,
-    "activation": "swish",
+    "activation": "relu",
     "output_activation": "sigmoid",
     "optimizer": "adam",
-    "learning_rate": 0.0001,
+    "learning_rate": 0.01,
     "loss": "binary_crossentropy",
     "epochs": 5000,
     "batch_size": 5 * 1024
@@ -63,14 +63,14 @@ def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=Fa
 
 model_parametrized, history_parametrized = train_parametrized(X_train_qq, Y_train_qq, X_val_qq, Y_val_qq, config, return_history = True)
 model_parametrized.save(pscratch_dir + run_name)
-plt.plot(history_parametrized.history['loss'], label='Training Loss')
-plt.plot(history_parametrized.history['val_loss'], label='Validation Loss')
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Training and Validation Loss')
-plt.legend()
-plt.savefig('loss_plot.png')
-plt.show()
+# plt.plot(history_parametrized.history['loss'], label='Training Loss')
+# plt.plot(history_parametrized.history['val_loss'], label='Validation Loss')
+# plt.xlabel('Epoch')
+# plt.ylabel('Loss')
+# plt.title('Training and Validation Loss')
+# plt.legend()
+# plt.savefig('loss_plot.png')
+# plt.show()
 
 wandb.finish()
 print("DONE TRAINING")

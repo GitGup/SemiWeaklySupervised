@@ -62,12 +62,7 @@ def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=Fa
         return model_parametrized
 
 model_parametrized, history_parametrized = train_parametrized(X_train_qq, Y_train_qq, X_val_qq, Y_val_qq, config, return_history = True)
-
-# print("Training Loss:", history_parametrized.history['loss'])
-# print("Validation Loss:", history_parametrized.history['val_loss'])
-# print("Training Accuracy:", history_parametrized.history['accuracy'])
-# print("Validation Accuracy:", history_parametrized.history['val_accuracy'])
-
+model_parametrized.save(pscratch_dir + run_name)
 plt.plot(history_parametrized.history['loss'], label='Training Loss')
 plt.plot(history_parametrized.history['val_loss'], label='Validation Loss')
 plt.xlabel('Epoch')

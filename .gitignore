@@ -15,6 +15,7 @@
 *.pkl
 *.tar.gz
 *.zip
+*.yaml
 */
 test.ipynb
 pscratch

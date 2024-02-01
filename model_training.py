@@ -7,12 +7,11 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn import metrics
 from wandb.keras import WandbCallback
-import subprocess
 import os
 
 #training data
-x_data_qq = np.load("x_parametrized_data_qq.npy")
-y_data_qq = np.load("y_parametrized_data_qq.npy")
+x_data_qq = np.load("data/x_parametrized_data_qq.npy")
+y_data_qq = np.load("data/y_parametrized_data_qq.npy")
 X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 42)
 
 pscratch_dir = "/pscratch/sd/g/gupsingh/"

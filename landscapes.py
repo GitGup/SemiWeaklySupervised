@@ -1,27 +1,20 @@
 from common import *
 import os
-from IPython.display import display, clear_output
-from PIL import Image, ImageSequence
-#from models import compileSemiWeakly
-
+#from models import compileSemiWeakly #recursive issue?
 from data import load_data
 import sys
 import time
-
-mass_range = [0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
-x = load_data("x_array_qqq.npy", noise_dims = 0)
-model = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/silvery-star-24/")
-
-#newer version of create_loss_landscape
+import argparse
+    
 qq = "qq"
 noise = False
 start_time = time.time()
 
-def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x):
+def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x, step):
     
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"z_allm1m2_{feature_dims}test.npy"
+    file_name = f"data/z_{params}param{m1}{m2}{feature_dims}{model}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -34,19 +27,18 @@ def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x):
     losses_list = []
 
     epsilon = 1e-4
-    sig_space = np.logspace(-3, -1, 20)
     
     #if we want a specific sigfrac
-    #sig_space = [0.1]
+    sigspace = np.logspace(-3, -1, 10)
     
     start = 0.5
     end = 6
-    step = 0.25
+    step = step
 
     weight_list = np.arange(start, end + step, step)
     
-    for sig in sig_space:
-        print("Signal Fraction: ", sig)
+    for sigfrac in sigspace:
+        print("Signal Fraction: ", sigfrac)
         count = 0
         for w1 in weight_list:
             for w2 in weight_list:
@@ -54,7 +46,6 @@ def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x):
                     print(f"reached {w1} {w2}")
                 count+=1
                 #print(w1, w2)
-                sigfrac = sig
 
                 inputs_hold = tf.keras.Input(shape=(1,))
                 simple_model = Dense(1,use_bias = False,activation='relu',kernel_initializer=tf.keras.initializers.Constant(w1))(inputs_hold)
@@ -70,15 +61,14 @@ def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x):
 
                 inputs = tf.keras.Input(shape=(feature_dims,))
                 inputs2 = tf.keras.layers.concatenate([inputs,model3(tf.ones_like(inputs)[:,0]),model32(tf.ones_like(inputs)[:,0])])
-
                 #physics prior
                 hidden_layer_1 = model(inputs2)
                 LLR = hidden_layer_1 / (1.-hidden_layer_1 + epsilon)
 
                 if params == 2:
-                    LLR_xs = 1.+sigfrac*LLR - sigfrac
+                    LLR_xs = 1 + sigfrac*LLR - sigfrac
                 elif params == 3:
-                    LLR_xs = 1. + model33(tf.ones_like(inputs)[:,0])*LLR
+                    LLR_xs = 1 + model33(tf.ones_like(inputs)[:,0])*LLR
                 else:
                     print("Choose 2 or 3 parameters")
                 ws = LLR_xs / (1.+LLR_xs)
@@ -89,7 +79,6 @@ def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x):
                 m2 = m2
                 
                 #if computed this mass pair, break
-                
                 key = (sigfrac,m1,m2)
                 if key in z:
                     break
@@ -100,13 +89,12 @@ def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x):
                 test_signal = int(1/2*len(x[m1,m2, qq, noise]))
 
                 #randomized signal
-                # random_test_signal_length = random.randint(0, test_signal - 1)
-                # N = int(1/4 * (len(x[0,0, qq, noise])))
-                # signal = x[m1, m2, qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
+                random_test_signal_length = random.randint(0, test_signal - 1)
+                N = int(1/4 * (len(x[0,0, qq, noise])))
+                signal = x[m1, m2, qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
 
                 #fixed signal portion
-                N = int(1/4 * (len(x[0,0, qq, noise])))
-                signal = x[m1, m2, qq, noise][test_signal:test_signal + int(sigfrac*N)]
+                #signal = x[m1, m2, qq, noise][test_signal:test_signal + int(sigfrac*N)]
 
                 x_data_ = np.concatenate([x[0,0, qq, noise][test_background:],signal])
                 y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
@@ -132,9 +120,25 @@ elapsed_time_total = round(end_time_total - start_time, 3)
 print(f"Total elapsed time: {elapsed_time_total} seconds")
     
 if __name__ == "__main__":
-    feature_dims = int(sys.argv[1])
-    parameters = int(sys.argv[2])
-    m1 = int(sys.argv[3])
-    m2 = int(sys.argv[4])
-    create_loss_landscape_6Features(model, feature_dims, parameters, m1, m2, x)
-    print(f"Creating Loss Landscape for {feature_dims} Features and mass pair: {m1} {m2}")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--feature_dims", type=int, help="Number of feature dimensions")
+    parser.add_argument("--parameters", type=int, help="Number of parameters")
+    parser.add_argument("--m1", type=int, help="Value for m1")
+    parser.add_argument("--m2", type=int, help="Value for m2")
+    #parser.add_argument("--noise_dims", type=int, help="Number of Noise Dimensions")
+    parser.add_argument("--step", type=float, help="Resolution of Weight Space")
+    args = parser.parse_args()
+    
+    noise_dims = 0
+    #load all necessary data/files
+    model = tf.keras.models.load_model("model_qq_opt2")
+    x = load_data("data/x_array_qqq.npy", noise_dims = noise_dims)
+    
+    create_loss_landscape_6Features(model, args.feature_dims, args.parameters, args.m1, args.m2, x, args.step)
+    print("---------- Creating Landscape With the Following Parameters ----------")
+    print(f"Feature dimensions: {args.feature_dims}")
+    print(f"Parameters: {args.parameters}")
+    print("m1: {$m1}")
+    print("m2: {$m2}")
+    print("----------------------------------------------------------------------")
+    print(f"Creating Loss Landscape for {args.feature_dims} features {args.parameters} parameters, mass pair: {args.m1} {args.m2}")

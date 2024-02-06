@@ -1,12 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
-from IPython.display import display, clear_output
-from PIL import Image, ImageSequence
+import seaborn as sea
 import os
 
-import seaborn as sea
-from scipy.interpolate import griddata
 from scipy.interpolate import RectBivariateSpline
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -47,11 +43,11 @@ def loss_landscape_nofit(sigfrac, m1, m2, z, step=0.25):
 #Loss Landscape but 3D
 #change elv and azim for viewing angle
 #step is resolution
-def create_3D_loss_manifold(sigfrac, m1, m2, elv, azim):
+def create_3D_loss_manifold(sigfrac, m1, m2, z, step, elev, azim):
 
     start = 0.5
     end = 6
-    step = 0.25
+    step = step
 
     weight_list = np.arange(start, end + step, step)
 
@@ -62,22 +58,23 @@ def create_3D_loss_manifold(sigfrac, m1, m2, elv, azim):
 
     w1_values, w2_values = zip(*grid_axes)
 
-    loss_values = list(z_allm1m2_HD[sigfrac, m1, m2])
+    loss_values = list(z[sigfrac, m1, m2])
 
     x = w1_values
     y = w2_values
     z = loss_values
 
-    fig = plt.figure()
+    sea.set(style="whitegrid")
+    fig = plt.figure(figsize = (10,8))
     ax = fig.add_subplot(111, projection='3d')
 
-    ax.scatter(x, y, z, c='r', marker='.', alpha = 0.3)
+    ax.scatter(x, y, z, c='r', marker='.', alpha = 0.1)
     ax.plot_trisurf(x, y, z, cmap='viridis', edgecolor='none')
 
     ax.set_xlabel('W1')
     ax.set_ylabel('W2')
-    ax.set_zlabel('Loss Label')
-    ax.set_title("3D Loss Manifold m1: {} m2: {} sigfrac: {np.round(sigfrac, 5)}".format(m1, m2))
+    ax.set_zlabel('Loss')
+    ax.set_title(f"Loss Manifold m1: {m1} m2: {m2} sigfrac: {np.round(sigfrac, 4)}")
 
     ax.xaxis.pane.fill = False
     ax.yaxis.pane.fill = False
@@ -85,5 +82,66 @@ def create_3D_loss_manifold(sigfrac, m1, m2, elv, azim):
 
     ax.grid(False)
     
-    ax.view_init(elev=elv, azim=azim)
-    plt.show()
+    #ax.set_xticks([])
+    #ax.set_yticks([])
+    ax.set_zticks([])
+    
+    ax.view_init(elev=elev, azim=azim)
+    #plt.savefig('plot.png', dpi=450, bbox_inches='tight')
+    return ax
+
+#interpolating using scipy RectBivariateSpline
+def plot_interpolated_landscape(sigfrac, m1, m2, z, step):
+    
+    start = 0.5
+    end = 6
+    step = step
+
+    weight_list = np.arange(start, end + step, step)
+
+    x_values = weight_list
+    y_values = weight_list
+
+    x, y = np.meshgrid(x_values, y_values)
+
+    loss_values_flat = z[sigfrac, m1, m2]
+    loss_values = np.array(loss_values_flat).reshape(x.shape)
+
+    interp_spline = RectBivariateSpline(x_values, y_values, loss_values, s = 0)
+
+    xi, yi = np.meshgrid(np.linspace(min(x_values), max(x_values), 1000), np.linspace(min(y_values), max(y_values), 1000))
+    zi = interp_spline(xi[0, :], yi[:, 0])
+    
+    #3d projection
+    fig = plt.figure()
+    ax3d = fig.add_subplot(111, projection='3d')
+    ax3d.plot_surface(xi, yi, zi, cmap='viridis', edgecolor='none', linewidth = 0)
+    ax3d.set_title("Loss Manifold")
+    ax3d.xaxis.pane.fill = False
+    ax3d.yaxis.pane.fill = False
+    ax3d.zaxis.pane.fill = False
+
+    ax3d.grid(False)
+    
+    #ax.set_xticks([])
+    #ax.set_yticks([])
+    ax3d.set_zticks([])
+    ax3d.view_init(elev=70, azim=250)
+
+    #2d projection
+    fig, ax = plt.subplots(1, 2, figsize=(8, 6))
+    ax[0].pcolormesh(x, y, loss_values, cmap='viridis')
+    ax[0].set_aspect("equal")
+    ax[0].set_title(f"$m_{1} = {m1} \quad m_{2} = {m2} \quad$" + f"sigfrac ={sigfrac}")
+    ax[0].set_xlabel(r"$w_{1}$")
+    ax[0].set_ylabel(r"$w_{2}$")
+
+    ax[1].contourf(xi, yi, zi, cmap='viridis')
+    ax[1].set_aspect("equal")
+    ax[1].set_title('Interpolated'.format(m1, m2, sigfrac))
+    ax[1].set_xlabel(r"$w_{1}$")
+    ax[1].set_ylabel(r"$w_{2}$")
+
+    plt.tight_layout()
+    #plt.savefig('interpolation3.55.5.png', dpi=450, bbox_inches='tight')
+    return fig

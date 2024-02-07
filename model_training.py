@@ -1,4 +1,3 @@
-import wandb
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, Model
@@ -7,6 +6,9 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn import metrics
 from wandb.keras import WandbCallback
+import wandb
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 import os
 
 #training data
@@ -18,17 +20,17 @@ pscratch_dir = "/pscratch/sd/g/gupsingh/"
 os.environ["WANDB_DIR"] = pscratch_dir
 
 config = {
-    "layer_1_neurons": 256,
-    "layer_2_neurons": 128,
-    "layer_3_neurons": 64,
+    "layer_1_neurons": 1024,
+    "layer_2_neurons": 512,
+    "layer_3_neurons": 256,
     "output_neurons": 1,
     "activation": "relu",
     "output_activation": "sigmoid",
     "optimizer": "adam",
     "learning_rate": 0.01,
     "loss": "binary_crossentropy",
-    "epochs": 5000,
-    "batch_size": 5 * 1024
+    "epochs": 1,
+    "batch_size": 1024
 }
 
 wandb.init(project="SemiWeakly", 
@@ -38,7 +40,7 @@ wandb.init(project="SemiWeakly",
            config=config)
 
 config = wandb.config
-
+run_name = wandb.run.name
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
 
 def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=False):
@@ -62,14 +64,18 @@ def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=Fa
 
 model_parametrized, history_parametrized = train_parametrized(X_train_qq, Y_train_qq, X_val_qq, Y_val_qq, config, return_history = True)
 model_parametrized.save(pscratch_dir + run_name)
-# plt.plot(history_parametrized.history['loss'], label='Training Loss')
-# plt.plot(history_parametrized.history['val_loss'], label='Validation Loss')
-# plt.xlabel('Epoch')
-# plt.ylabel('Loss')
-# plt.title('Training and Validation Loss')
-# plt.legend()
-# plt.savefig('loss_plot.png')
-# plt.show()
+
+SLACK_API_TOKEN = "xoxb-327063347744-6595347520051-z1j3XpfctTSv05EQCQCbHgRP"
+client = WebClient(token=SLACK_API_TOKEN)
+channel_id = "D05JLSUNH8V"
+
+message = "Parametrized Training finished running!"
+
+try:
+    response = client.chat_postMessage(channel=channel_id, text=message)
+    print("Message sent successfully:", response["ts"])
+except SlackApiError as e:
+    print("Error sending message:", e.response["error"])
 
 wandb.finish()
 print("DONE TRAINING")

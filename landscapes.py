@@ -125,7 +125,6 @@ if __name__ == "__main__":
     parser.add_argument("--parameters", type=int, help="Number of parameters")
     parser.add_argument("--m1", type=int, help="Value for m1")
     parser.add_argument("--m2", type=int, help="Value for m2")
-    #parser.add_argument("--noise_dims", type=int, help="Number of Noise Dimensions")
     parser.add_argument("--step", type=float, help="Resolution of Weight Space")
     args = parser.parse_args()
     

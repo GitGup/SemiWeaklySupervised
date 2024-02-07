@@ -172,14 +172,14 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         weight_list2_runs.append(weight_list2_injections)
         weight_list3_runs.append(weight_list3_injections)
 
-    np.save(f"data/{m1}{m2}/msic1_median_script.npy", msic1_runs)
-    np.save(f"data/{m1}{m2}/msic2_median_script.npy", msic2_runs)
-    np.save(f"data/{m1}{m2}/std1_median_script.npy", std1_runs)
-    np.save(f"data/{m1}{m2}/std2_median_script.npy", std2_runs)
-    np.save(f"data/{m1}{m2}/weight_list1_runs_script.npy", weight_list1_runs)
-    np.save(f"data/{m1}{m2}/weight_list2_runs_script.npy", weight_list2_runs)
-    np.save(f"data/{m1}{m2}/weight_list3_runs_script.npy", weight_list3_runs)
-    np.save(f"data/{m1}{m2}/initial_weights_runs_script.npy", initial_weights_runs)
+    np.save(f"data/msic1_median_script.npy", msic1_runs)
+    np.save(f"data/msic2_median_script.npy", msic2_runs)
+    np.save(f"data/std1_median_script.npy", std1_runs)
+    np.save(f"data/std2_median_script.npy", std2_runs)
+    np.save(f"data/weight_list1_runs_script.npy", weight_list1_runs)
+    np.save(f"data/weight_list2_runs_script.npy", weight_list2_runs)
+    np.save(f"data/weight_list3_runs_script.npy", weight_list3_runs)
+    np.save(f"data/initial_weights_runs_script.npy", initial_weights_runs)
 
 if __name__ == "__main__":
     mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]

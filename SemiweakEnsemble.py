@@ -7,6 +7,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from sklearn import metrics
 from data import load_data
 from models import *
+import argparse
 import os
 
 
@@ -20,120 +21,175 @@ model_qq = tf.keras.models.load_model("model_qq_opt2")
 #For a given signal injection amount, inject events according to N ~ Poission(M)
 #For a given N injected events, initialize the network with w ~ Uniform.  Do this k times.
 
-qq = "qq"
-
-epsilon = 1e-4
-k_runs = 5
 noise = False
-ran_once = False
+epsilon = 1e-4
 
-feature_dims = 6
-params = 3
-
-m1 = 2
-m2 = 5
-test_signal = int(1/2*len(x[m1,m2, qq, noise]))
-
-model_full = train_supervised(feature_dims, m1, m2)
-
-msic1_runs = []
-msic2_runs = []
-msic1_stds = []
-msic2_stds = []
-
-initial_weights_runs = []
-
-sigspace = np.logspace(-3,-1,10)
-for sigfrac in sigspace:
+def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializations):
+    msic1_runs = []
+    msic2_runs = []
+    std1_runs = []
+    std2_runs = []
+    score1_injections_raw_runs = []
+    score2_injections_raw_runs = []
+    weight_list1_runs = []
+    weight_list2_runs = []
+    weight_list3_runs = []
+    initial_weights_runs = []
     
-    initial_weights = []
-    
-    msic1_median = []
-    msic2_median = []
-    
-    print(f"---------------{sigfrac}---------------")
-    
-    # N ~ Poission(M) injected events
-    for injection in range(len(sigspace)):
-        print(f"Injecting N = {len(sigspace) - injection} times, currently on: N = {injection}")
-        
-        #randomized signal
-        random_test_signal_length = random.randint(0, test_signal - 1)
-        N = int(1/4 * (len(x[0,0, qq, noise])))
-        signal = x[m1, m2, qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
-        
-        #fixed signal portion
-        # N = int(1/4 * (len(x[0,0, qq, noise])))
-        # signal = x[m1, m2, qq, noise][test_signal:test_signal + int(sigfrac*N)]
-        
-        msic1_kruns = []
-        msic2_kruns = []
-        
-        for k in range(k_runs):
-            print(f"Ensembling {k_runs} for Signal Fraction : {sigfrac}")
+    qq = "qq"
+    ran_once = False
+    test_signal = int(1/2*len(x[m1,m2, qq, noise]))
 
-            w1 = round(random.uniform(0.5, 6),3)
-            w2 = round(random.uniform(0.5, 6),3)
-            initial_weights.append((w1, w2))
-            print(f"Initialization: {w1} {w2}")
+    model_full = train_supervised(feature_dims, m1, m2)
 
-            model_semiweak = compileSemiWeakly(model_qq, feature_dims, params, m1, m2, w1, w2)
+    sigspace = np.logspace(-3,-1,10)
+    for sigfrac in sigspace:
 
-            test_background = int(1/2 * len(x[0,0, qq, noise]))
-            train_reference = int(1/4 *len(x[0,0, qq, noise]))
-            train_data = int(1/4 * len(x[0,0, qq, noise]))
-            test_signal = int(1/2*len(x[m1,m2, qq, noise]))
+        initial_weights = []
 
-            x_data_ = np.concatenate([x[0,0, qq, noise][test_background:],signal])
-            y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
+        msic1_median = []
+        msic2_median = []
+        score1_injections_raw = []
+        score2_injections_raw = []
+        weight_list1_injections = []
+        weight_list2_injections = []
+        weight_list3_injections = []
 
-            X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
+        print(f"---------------{sigfrac}---------------")
 
-            history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=100,
-                                                   validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
+        # N ~ Poission(M) injected events
+        for injection in range(injections):
+            print(f"Injecting N = {injections - injection} more times, currently on: N = {injection}")
 
-            print(f"m1: {m1}",f"m2: {m2}", f"w1: {model_semiweak.trainable_weights[0].numpy()[0][0]}", f"w2: {model_semiweak.trainable_weights[1].numpy()[0][0]}")
+            #randomized signal
+            random_test_signal_length = random.randint(0, test_signal - 1)
+            N = int(1/4 * (len(x[0,0, qq, noise])))
+            signal = x[m1, m2, qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
 
-            scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
+            #fixed signal portion
+            # N = int(1/4 * (len(x[0,0, qq, noise])))
+            # signal = x[m1, m2, qq, noise][test_signal:test_signal + int(sigfrac*N)]
+
+            score1_kruns = []
+            score2_kruns = []
+            score1_kruns_raw = []
+            score2_kruns_raw = []
+            weight_list1_kruns = []
+            weight_list2_kruns = []
+            weight_list3_kruns = []
+
+            #print(f"Ensembling {k_runs} for Signal Fraction : {sigfrac}")
+            for k in range(m_initializations):
+
+                w1 = round(random.uniform(0.5, 6),3)
+                w2 = round(random.uniform(0.5, 6),3)
+                initial_weights.append((w1, w2))
+
+                print(f"Initialization: {w1} {w2}")
+
+                model_semiweak = compileSemiWeakly(model_qq, feature_dims, parameters, m1, m2, w1, w2)
+
+                test_background = int(1/2 * len(x[0,0, qq, noise]))
+                train_reference = int(1/4 *len(x[0,0, qq, noise]))
+                train_data = int(1/4 * len(x[0,0, qq, noise]))
+                test_signal = int(1/2*len(x[m1,m2, qq, noise]))
+
+                x_data_ = np.concatenate([x[0,0, qq, noise][test_background:],signal])
+                y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
+
+                X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
+
+                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=100,
+                                                       validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
+
+                print(f"m1: {m1}",f"m2: {m2}", f"w1: {model_semiweak.trainable_weights[0].numpy()[0][0]}", f"w2: {model_semiweak.trainable_weights[1].numpy()[0][0]}")
+
+                weight_list1_kruns+=[model_semiweak.trainable_weights[0].numpy()[0][0]]
+                weight_list2_kruns+=[model_semiweak.trainable_weights[1].numpy()[0][0]]
+                weight_list3_kruns+=[np.exp(model_semiweak.trainable_weights[2].numpy()[0][0])]
+
+                scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
+                # y = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
+                # fpr, tpr, _ = metrics.roc_curve(y, scores)
+
+                #weakly supervised
+                model_cwola = compileCWOLA(feature_dims, m1, m2)
+                myhistory_cwola = model_cwola.fit(X_train_[:,0:feature_dims], Y_train_, epochs=10,validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
+
+                scores2 = model_cwola.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
+                # y2 = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
+                # fpr2, tpr2, _ = metrics.roc_curve(y2, scores2)
+
+                #fully supervised dedicated training initiaized once (this still predicts for every s/b can be simplified)
+                if ran_once == False:
+                    scores_full = model_full.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
+                    y_full = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
+                    fpr_full, tpr_full, _ = metrics.roc_curve(y_full, scores_full)
+
+                #parametrized classifer
+                    scores_full2 = model_qq.predict(x_data_qq[np.product(x_data_qq[:,6:8]==[m1,m2],axis=1)==1],batch_size=1000)
+                    fpr_full2, tpr_full2, _ = metrics.roc_curve(y_data_qq[np.product(x_data_qq[:,6:8]==[m1,m2],axis=1)==1], scores_full2)
+
+                ran_once = True
+                #per-event probability
+                score1_kruns.append(scores)
+                score2_kruns.append(scores2)
+                score1_kruns_raw.append(scores)
+                score2_kruns_raw.append(scores2)
+
+            weight_list1_injections.append(weight_list1_kruns)
+            weight_list2_injections.append(weight_list2_kruns)
+            weight_list3_injections.append(weight_list3_kruns)
+
+            #average over the k classifiers runs
             y = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
-            fpr, tpr, _ = metrics.roc_curve(y, scores)
+            fpr, tpr, _ = metrics.roc_curve(y, np.median(score1_kruns, axis = 0))
+            msic1_kmedian = np.max(tpr/np.sqrt(fpr+epsilon))
 
-            msic1_value = np.max(tpr/np.sqrt(fpr+epsilon))
-            print(f"Max SIC k = {k}: ", msic1_value)
-
-            #weakly supervised
-            model_cwola = compileCWOLA(feature_dims, m1, m2)
-            myhistory_cwola = model_cwola.fit(X_train_[:,0:feature_dims], Y_train_, epochs=10,validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
-
-            scores2 = model_cwola.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
             y2 = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
-            fpr2, tpr2, _ = metrics.roc_curve(y2, scores2)
+            fpr2, tpr2, _ = metrics.roc_curve(y2, np.median(score2_kruns, axis = 0))
+            msic2_kmedian = np.max(tpr2/np.sqrt(fpr2+epsilon))
 
-            #fully supervised dedicated training initiaized once (this still predicts for every s/b can be simplified)
-            if ran_once == False:
-                scores_full = model_full.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
-                y_full = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
-                fpr_full, tpr_full, _ = metrics.roc_curve(y_full, scores_full)
+            msic1_median.append(msic1_kmedian)
+            print(f" --- msic1_median on injection {injection}: {msic1_kmedian} ---")
+            msic2_median.append(msic2_kmedian)
+            print(f" --- msic2_median on injection {injection}: {msic2_kmedian} ---")
+            score1_injections_raw.append(score1_kruns_raw)
+            score2_injections_raw.append(score2_kruns_raw)
 
-            #parametrized classifer
-                scores_full2 = model_qq.predict(x_data_qq[np.product(x_data_qq[:,6:8]==[m1,m2],axis=1)==1],batch_size=1000)
-                fpr_full2, tpr_full2, _ = metrics.roc_curve(y_data_qq[np.product(x_data_qq[:,6:8]==[m1,m2],axis=1)==1], scores_full2)
+        msic1_runs.append(np.median(msic1_median))
+        print(f" --- msic1_runs for signal fraction {sigfrac}: {np.median(msic1_median)} ---")
+        msic2_runs.append(np.median(msic2_median))
+        print(f" --- msic2_runs for signal fraction {sigfrac}: {np.median(msic2_median)} ---")
+        std1_runs.append(np.std(msic1_median))
+        print(f" --- msic1_runs_std for signal fraction {sigfrac}: {np.std(msic1_median)} ---")
+        std2_runs.append(np.std(msic2_median))
+        print(f" --- msic2_runs_std for signal fraction {sigfrac}: {np.std(msic2_median)} ---")
 
-            ran_once = True
-            #per-event probability
-            msic1_kruns.append(msic1_value)
-            msic2_kruns.append(np.max(tpr2/np.sqrt(fpr2+epsilon)))
-        
-        #average over the k classifiers runs
-        msic1_median.append(np.median(msic1_kruns))
-        msic2_median.append(np.median(msic2_kruns))
-    
-    msic1_runs.append(np.median(msic1_median))
-    msic2_runs.append(np.median(msic2_median))
-    msic1_stds.append(np.std(msic1_median))
-    msic2_stds.append(np.std(msic2_median))
-        
-np.save("data/msic1_median_test.npy", msic1_runs)
-np.save("data/msic2_median_test.npy", msic2_runs)
-np.save("data/msic1_std_test.npy", msic1_stds)
-np.save("data/msic2_std_test.npy", msic2_stds)
+        score1_injections_raw_runs.append(score1_injections_raw)
+        score2_injections_raw_runs.append(score2_injections_raw)
+        weight_list1_runs.append(weight_list1_injections)
+        weight_list2_runs.append(weight_list2_injections)
+        weight_list3_runs.append(weight_list3_injections)
+
+    np.save(f"data/{m1}{m2}/msic1_median_script.npy", msic1_runs)
+    np.save(f"data/{m1}{m2}/msic2_median_script.npy", msic2_runs)
+    np.save(f"data/{m1}{m2}/std1_median_script.npy", std1_runs)
+    np.save(f"data/{m1}{m2}/std2_median_script.npy", std2_runs)
+    np.save(f"data/{m1}{m2}/weight_list1_runs_script.npy", weight_list1_runs)
+    np.save(f"data/{m1}{m2}/weight_list2_runs_script.npy", weight_list2_runs)
+    np.save(f"data/{m1}{m2}/weight_list3_runs_script.npy", weight_list3_runs)
+    np.save(f"data/{m1}{m2}/initial_weights_runs_script.npy", initial_weights_runs)
+
+if __name__ == "__main__":
+    mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--feature_dims", type=int, help="Number of feature dimensions")
+    parser.add_argument("--m1", type=float, help="Value for m1", choices=mass_range)
+    parser.add_argument("--m2", type=float, help="Value for m2", choices=mass_range)
+    parser.add_argument("--parameters", type=int, help="Number of parameters")
+    parser.add_argument("--injections", type=int, help="Number of Randomized Signal Injections")
+    parser.add_argument("--m_initializations", type=int, help="Number of Mass Initializations")
+    args = parser.parse_args()
+
+    train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations)

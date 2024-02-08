@@ -16,6 +16,7 @@
 *.tar.gz
 *.zip
 *.yaml
+*.env
 */
 test.ipynb
 pscratch

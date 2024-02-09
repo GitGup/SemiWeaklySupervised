@@ -5,16 +5,24 @@ from data import load_data
 import sys
 import time
 import argparse
+from utils import send_slack_message, send_slack_plot
     
 qq = "qq"
 noise = False
 start_time = time.time()
 
-def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x, step):
+noise_dims = 0
+#load all necessary data/files
+#"model_qq_opt2"
+model_name = "model_qq_opt2"
+model = tf.keras.models.load_model(model_name)
+x = load_data("data/x_array_qqq.npy", noise_dims = noise_dims)
+
+def eval_loss_landscape_6Features(model, feature_dims, params, m1, m2, x, step):
     
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"data/z_{params}param{m1}{m2}{feature_dims}{model}.npy"
+    file_name = f"data/z_{params}param{m1}{m2}{feature_dims}{model_name}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -29,7 +37,8 @@ def create_loss_landscape_6Features(model, feature_dims, params, m1, m2, x, step
     epsilon = 1e-4
     
     #if we want a specific sigfrac
-    sigspace = np.logspace(-3, -1, 10)
+    #sigspace = np.logspace(-3, -1, 10)
+    sigspace = [0.001, 0.1]
     
     start = 0.5
     end = 6
@@ -128,16 +137,30 @@ if __name__ == "__main__":
     parser.add_argument("--step", type=float, help="Resolution of Weight Space")
     args = parser.parse_args()
     
-    noise_dims = 0
-    #load all necessary data/files
-    model = tf.keras.models.load_model("model_qq_opt2")
-    x = load_data("data/x_array_qqq.npy", noise_dims = noise_dims)
+    message = (
+    "```"
+    "---------- Creating Landscape With the Following Parameters ----------\n"
+    f"Feature dimensions: {args.feature_dims}\n"
+    f"Parameters: {args.parameters}\n"
+    f"m1: {args.m1}\n"
+    f"m2: {args.m2}\n"
+    f"model: {model_name}\n"
+    "----------------------------------------------------------------------\n"
+    "```"
+)
     
-    create_loss_landscape_6Features(model, args.feature_dims, args.parameters, args.m1, args.m2, x, args.step)
-    print("---------- Creating Landscape With the Following Parameters ----------")
-    print(f"Feature dimensions: {args.feature_dims}")
-    print(f"Parameters: {args.parameters}")
-    print("m1: {$m1}")
-    print("m2: {$m2}")
-    print("----------------------------------------------------------------------")
-    print(f"Creating Loss Landscape for {args.feature_dims} features {args.parameters} parameters, mass pair: {args.m1} {args.m2}")
+    send_slack_message(message)
+    print(message)
+    eval_loss_landscape_6Features(model, args.feature_dims, args.parameters, args.m1, args.m2, x, args.step)
+    
+    filename = f"data/z_{args.parameters}param{args.m1}{args.m2}{args.feature_dims}{model}.npy"
+    z = np.load(filename, allow_pickle = True).item()
+    sigfrac = 0.1
+    elv = 60
+    azim = 20
+    
+    create_3D_loss_manifold(sigfrac, m1, m2, z, step, elv, azim, save = True)
+    loss_landscape_nofit(sigfrac, m1, m2, z, step, save = True)
+    img_paths = [f"plots/landscape{float(m1)}{float(m2)}.png", f"plots/manifolds{float(m1)}{float(m2)}.png"]
+    send_slack_plot(img_paths)
+    send_slack_message("Done!")

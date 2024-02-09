@@ -125,17 +125,6 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
                 # y2 = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
                 # fpr2, tpr2, _ = metrics.roc_curve(y2, scores2)
 
-                #fully supervised dedicated training initiaized once (this still predicts for every s/b can be simplified)
-                if ran_once == False:
-                    scores_full = model_full.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
-                    y_full = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
-                    fpr_full, tpr_full, _ = metrics.roc_curve(y_full, scores_full)
-
-                #parametrized classifer
-                    scores_full2 = model_qq.predict(x_data_qq[np.product(x_data_qq[:,6:8]==[m1,m2],axis=1)==1],batch_size=1000)
-                    fpr_full2, tpr_full2, _ = metrics.roc_curve(y_data_qq[np.product(x_data_qq[:,6:8]==[m1,m2],axis=1)==1], scores_full2)
-
-                ran_once = True
                 #per-event probability
                 score1_kruns.append(scores)
                 score2_kruns.append(scores2)
@@ -177,8 +166,10 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         weight_list2_runs.append(weight_list2_injections)
         weight_list3_runs.append(weight_list3_injections)
         
-        maxsicandstd1[sigfrac] = (msic1_runs, std1_runs)
-        maxsicandstd2[sigfrac] = (msic2_runs, std2_runs)
+        maxsicandstd1[sigfrac] = (np.median(msic1_median), np.std(msic1_median))
+        maxsicandstd2[sigfrac] = (np.median(msic2_median), np.std(msic2_median))
+        maxsicandstd1_array = np.array(maxsicandstd1.items())
+        maxsicandstd2_array = np.array(maxsicandstd2.items())
         np.save(f"data/maxsicandstd1_script.npy", maxsicandstd1)
         np.save(f"data/maxsicandstd2_script.npy", maxsicandstd2)
         

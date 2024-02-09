@@ -104,7 +104,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
 
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
 
-                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=1000,
+                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=250,
                                                        validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
 
                 print(f"m1: {m1}",f"m2: {m2}", f"w1: {model_semiweak.trainable_weights[0].numpy()[0][0]}", f"w2: {model_semiweak.trainable_weights[1].numpy()[0][0]}")
@@ -170,8 +170,8 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         maxsicandstd2[sigfrac] = (np.median(msic2_median), np.std(msic2_median))
         maxsicandstd1_array = np.array(maxsicandstd1.items())
         maxsicandstd2_array = np.array(maxsicandstd2.items())
-        np.save(f"data/maxsicandstd1_script.npy", maxsicandstd1)
-        np.save(f"data/maxsicandstd2_script.npy", maxsicandstd2)
+        np.save(f"data/maxsicandstd1_script{float(m1)}{float(m2)}.npy", maxsicandstd1)
+        np.save(f"data/maxsicandstd2_script{float(m1)}{float(m2)}.npy", maxsicandstd2)
         
     np.save(f"data/msic1_median_script{float(m1)}{float(m2)}.npy", msic1_runs)
     np.save(f"data/msic2_median_script{float(m1)}{float(m2)}.npy", msic2_runs)

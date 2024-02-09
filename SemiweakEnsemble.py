@@ -47,7 +47,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
 
     model_full = train_supervised(feature_dims, m1, m2)
 
-    sigspace = np.logspace(-3,-1,10)
+    sigspace = np.flip(np.logspace(-3,-1,10))
     for sigfrac in sigspace:
 
         initial_weights = []

@@ -1,5 +1,8 @@
-from common import np
-from common import pd
+import numpy as np
+import pandas as pd
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
+from dotenv import dotenv_values
 
 def computemjj_pd(event):
     px1 = event[["pxj1"]].to_numpy()
@@ -52,3 +55,38 @@ def pred_accuracy(y_test, scores):
             
     accuracy = np.mean(predictions_list == y_test)
     return accuracy
+
+
+def send_slack_message(message=""):
+    env_vars = dotenv_values(".env")
+
+    SLACK_API_TOKEN = env_vars["SLACK_API_TOKEN"]
+    SLACK_CHANNEL_ID = env_vars["SLACK_CHANNEL_ID"]
+    
+    client = WebClient(token=SLACK_API_TOKEN)
+    channel_id = SLACK_CHANNEL_ID
+
+    message = message
+
+    try:
+        response = client.chat_postMessage(channel=channel_id, text=message)
+        print("Message sent successfully! :", response["ts"])
+    except SlackApiError as e:
+        print("Error sending message:", e.response["error"])
+        
+def send_slack_plot(image_path, message="Here is a plot"):
+    env_vars = dotenv_values(".env")
+
+    SLACK_API_TOKEN = env_vars["SLACK_API_TOKEN"]
+    SLACK_CHANNEL_ID = env_vars["SLACK_CHANNEL_ID"]
+    
+    client = WebClient(token=SLACK_API_TOKEN)
+    try:
+        response = client.files_upload(
+            channels=SLACK_CHANNEL_ID,
+            file=image_path,
+            initial_comment=message
+        )
+        print("Plot sent successfully:", response["ts"])
+    except SlackApiError as e:
+        print("Error sending plot:", e.response["error"])

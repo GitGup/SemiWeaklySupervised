@@ -75,7 +75,7 @@ def compileSemiWeakly(model, feature_dims, params, m1, m2, w1, w2):
         print("test")
         #LLR_xs = 1.+sigfrac*LLR - sigfrac
     elif params == 3:
-        LLR_xs = 1. + model33(tf.ones_like(inputs)[:,0])*LLR
+        LLR_xs = 1. + model33(tf.ones_like(inputs)[:,0])*LLR - model33(tf.ones_like(inputs)[:,0])
     else:
         print("Choose 2 or 3 parameters")
     ws = LLR_xs / (1.+LLR_xs)

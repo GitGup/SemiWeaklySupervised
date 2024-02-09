@@ -179,6 +179,9 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         
         maxsicandstd1[sigfrac] = (msic1_runs, std1_runs)
         maxsicandstd2[sigfrac] = (msic2_runs, std2_runs)
+        np.save(f"data/maxsicandstd1_script.npy", maxsicandstd1)
+        np.save(f"data/maxsicandstd2_script.npy", maxsicandstd2)
+        
     np.save(f"data/msic1_median_script{float(m1)}{float(m2)}.npy", msic1_runs)
     np.save(f"data/msic2_median_script{float(m1)}{float(m2)}.npy", msic2_runs)
     np.save(f"data/std1_median_script{float(m1)}{float(m2)}.npy", std1_runs)

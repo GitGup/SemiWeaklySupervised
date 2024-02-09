@@ -9,13 +9,16 @@ from data import load_data
 from models import *
 import argparse
 import os
+from utils import send_slack_message, send_slack_plot
 
 
 #load everything required
 x = load_data("data/x_array_qqq.npy", noise_dims = 0)
 x_data_qq = np.load("data/x_parametrized_data_qq.npy")
 y_data_qq = np.load("data/y_parametrized_data_qq.npy")
-model_qq = tf.keras.models.load_model("model_qq_opt2")
+model_path = "model_qq_opt2"
+#model_path = "/pscratch/sd/g/gupsingh/neat-tree-47"
+model_qq = tf.keras.models.load_model(model_path)
 
 #Loop over signal injection amounts M
 #For a given signal injection amount, inject events according to N ~ Poission(M)
@@ -25,6 +28,8 @@ noise = False
 epsilon = 1e-4
 
 def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializations):
+    maxsicandstd1 = {}
+    maxsicandstd2 = {}
     msic1_runs = []
     msic2_runs = []
     std1_runs = []
@@ -99,7 +104,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
 
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
 
-                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=100,
+                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=1000,
                                                        validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
 
                 print(f"m1: {m1}",f"m2: {m2}", f"w1: {model_semiweak.trainable_weights[0].numpy()[0][0]}", f"w2: {model_semiweak.trainable_weights[1].numpy()[0][0]}")
@@ -171,15 +176,19 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         weight_list1_runs.append(weight_list1_injections)
         weight_list2_runs.append(weight_list2_injections)
         weight_list3_runs.append(weight_list3_injections)
-
-    np.save(f"data/msic1_median_script51.npy", msic1_runs)
-    np.save(f"data/msic2_median_script51.npy", msic2_runs)
-    np.save(f"data/std1_median_script51.npy", std1_runs)
-    np.save(f"data/std2_median_script51.npy", std2_runs)
-    np.save(f"data/weight_list1_runs_script51.npy", weight_list1_runs)
-    np.save(f"data/weight_list2_runs_script51.npy", weight_list2_runs)
-    np.save(f"data/weight_list3_runs_script51.npy", weight_list3_runs)
-    np.save(f"data/initial_weights_runs_script51.npy", initial_weights_runs)
+        
+        maxsicandstd1[sigfrac] = (msic1_runs, std1_runs)
+        maxsicandstd2[sigfrac] = (msic2_runs, std2_runs)
+    np.save(f"data/msic1_median_script{float(m1)}{float(m2)}.npy", msic1_runs)
+    np.save(f"data/msic2_median_script{float(m1)}{float(m2)}.npy", msic2_runs)
+    np.save(f"data/std1_median_script{float(m1)}{float(m2)}.npy", std1_runs)
+    np.save(f"data/std2_median_script{float(m1)}{float(m2)}.npy", std2_runs)
+    np.save(f"data/weight_list1_runs_script{float(m1)}{float(m2)}.npy", weight_list1_runs)
+    np.save(f"data/weight_list2_runs_script{float(m1)}{float(m2)}.npy", weight_list2_runs)
+    np.save(f"data/weight_list3_runs_script{float(m1)}{float(m2)}.npy", weight_list3_runs)
+    np.save(f"data/initial_weights_runs_script{float(m1)}{float(m2)}.npy", initial_weights_runs)
+    np.save(f"data/score1_injections_raw_runs{float(m1)}{float(m2)}.npy", score1_injections_raw_runs)
+    np.save(f"data/score2_injections_raw_runs{float(m1)}{float(m2)}.npy", score2_injections_raw_runs)
 
 if __name__ == "__main__":
     mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
@@ -191,5 +200,18 @@ if __name__ == "__main__":
     parser.add_argument("--injections", type=int, help="Number of Randomized Signal Injections")
     parser.add_argument("--m_initializations", type=int, help="Number of Mass Initializations")
     args = parser.parse_args()
-
+    
+    message = (
+    "```"
+    "---------- Training Semi-Weak With the Following Parameters ----------\n"
+    f"Feature dimensions: {args.feature_dims}\n"
+    f"Parameters: {args.parameters}\n"
+    f"m1: {args.m1}\n"
+    f"m2: {args.m2}\n"
+    f"model: {model_path}\n"
+    "----------------------------------------------------------------------\n"
+    "```"
+)
+    send_slack_message(message)
     train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations)
+    send_slack_message("Done!")

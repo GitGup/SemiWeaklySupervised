@@ -5,7 +5,10 @@ from data import load_data
 import sys
 import time
 import argparse
+
+#custom moduiles
 from utils import send_slack_message, send_slack_plot
+from plotting import create_3D_loss_manifold
     
 qq = "qq"
 noise = False
@@ -14,11 +17,11 @@ start_time = time.time()
 noise_dims = 0
 #load all necessary data/files
 #"model_qq_opt2"
-model_name = "model_qq_opt2"
+model_name = "chromatic-fireworks-52"
 model = tf.keras.models.load_model(model_name)
 x = load_data("data/x_array_qqq.npy", noise_dims = noise_dims)
 
-def eval_loss_landscape_6Features(model, feature_dims, params, m1, m2, x, step):
+def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2, step):
     
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
@@ -38,7 +41,7 @@ def eval_loss_landscape_6Features(model, feature_dims, params, m1, m2, x, step):
     
     #if we want a specific sigfrac
     #sigspace = np.logspace(-3, -1, 10)
-    sigspace = [0.001, 0.1]
+    sigspace = sigspace
     
     start = 0.5
     end = 6
@@ -77,7 +80,7 @@ def eval_loss_landscape_6Features(model, feature_dims, params, m1, m2, x, step):
                 if params == 2:
                     LLR_xs = 1 + sigfrac*LLR - sigfrac
                 elif params == 3:
-                    LLR_xs = 1 + model33(tf.ones_like(inputs)[:,0])*LLR
+                    LLR_xs = 1 + model33(tf.ones_like(inputs)[:,0])*LLR - model33(tf.ones_like(inputs)[:,0])
                 else:
                     print("Choose 2 or 3 parameters")
                 ws = LLR_xs / (1.+LLR_xs)

@@ -3,10 +3,23 @@ import sys
 from tensorflow.keras.constraints import Constraint
 from data import load_data
 
-def createSimpleModel(weight):
+qq = "qq"
+qqq = "qqq"
+class WeightConstraint(Constraint):
+    def __init__(self, min_value=0.5, max_value=6):
+        self.min_value = min_value
+        self.max_value = max_value
+
+    def __call__(self, weights):
+        return tf.clip_by_value(weights, self.min_value, self.max_value)
+
+    def get_config(self):
+        return {'min_value': self.min_value, 'max_value': self.max_value}
+
+def simpleModel(weight):
     input_layer = tf.keras.Input(shape=(1,))
     simple_model = Dense(1,use_bias = False,activation="relu",
-                         kernel_initializer=tf.keras.initializers.Constant(weight))(input_layer)
+                         kernel_initializer=tf.keras.initializers.Constant(weight), kernel_constraint=WeightConstraint())(input_layer)
     model = Model(inputs=input_layer, outputs=simple_model)
     return model
 
@@ -36,17 +49,6 @@ def compileCWOLA(feature_dims, m1, m2):
     model_cwola.add(Dense(1, activation='sigmoid'))
     model_cwola.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
     return model_cwola
-
-class WeightConstraint(Constraint):
-    def __init__(self, min_value=0.5, max_value=6):
-        self.min_value = min_value
-        self.max_value = max_value
-
-    def __call__(self, weights):
-        return tf.clip_by_value(weights, self.min_value, self.max_value)
-
-    def get_config(self):
-        return {'min_value': self.min_value, 'max_value': self.max_value}
 
 epsilon = 1e-4
 #SemiWeak Model

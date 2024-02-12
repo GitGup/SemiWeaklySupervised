@@ -17,7 +17,7 @@ x = load_data("data/x_array_qqq.npy", noise_dims = 0)
 x_data_qq = np.load("data/x_parametrized_data_qq.npy")
 y_data_qq = np.load("data/y_parametrized_data_qq.npy")
 #model_path = "model_qq_opt2"
-model_path = "/pscratch/sd/g/gupsingh/neat-tree-47"
+model_path = "/pscratch/sd/g/gupsingh/chromatic-fireworks-52"
 model_qq = tf.keras.models.load_model(model_path)
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
@@ -78,8 +78,8 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
             weight_list2_kruns = []
             weight_list3_kruns = []
 
-            print(f"Ensembling {k_runs} for Signal Fraction : {sigfrac}")
-            for k in range(k_runs):
+            print(f"Ensembling {m_initializations} for Signal Fraction : {sigfrac}")
+            for k in range(m_initializations):
 
                 w1 = round(random.uniform(0.5, 6),3)
                 w2 = round(random.uniform(0.5, 6),3)
@@ -89,7 +89,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
 
                 for l in model_qq.layers:
                     l.trainable=False
-                model_semiweak = compileSemiWeakly(model_qq, feature_dims, params, m1, m2, w1, w2)
+                model_semiweak = compileSemiWeakly(model_qq, feature_dims, parameters, m1, m2, w1, w2)
 
                 test_background = int(1/2 * len(x[0,0, qq, noise]))
                 train_reference = int(1/4 *len(x[0,0, qq, noise]))

@@ -25,7 +25,7 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
     
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"data/z_{params}param{m1}{m2}{feature_dims}{model_name}.npy"
+    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{qq}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -126,11 +126,101 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
             z[sigfrac, m1, m2] = losses_list
             losses_list = []
             np.save(file_name, z)
-end_time_total = time.time()
+    end_time_total = time.time()
 
-elapsed_time_total = round(end_time_total - start_time, 3)
-print(f"Total elapsed time: {elapsed_time_total} seconds")
+    elapsed_time_total = round(end_time_total - start_time, 3)
+    print(f"Total elapsed time: {elapsed_time_total} seconds")
+
+qq = "qq"
+noise = False
+
+def eval_AUC_landscape_6Features(sigspace, model, feature_dims, parameters, m1, m2, step = 0.25):
+    start_time = time.time()
+    #check if AUC dictionary exists, if it does load it, if not create empty one
+    dir_path = os.getcwd()
+    file_name = f"a_{feature_dims}_{parameters}_{m1}{m2}_{step}_{qq}.npy"
+    file_path = os.path.join(dir_path, file_name)
     
+    if os.path.exists(file_path):
+        z = np.load(file_name, allow_pickle = True).item()
+    else:
+        print("Dictionary doesn't exist, creating one...")
+        z = {}
+    #varying sigfrac, fixed mass pair
+    
+    AUC_list = []
+
+    epsilon = 1e-4
+    sig_space = [np.logspace(-3, -1, 10)[-1]]
+    
+    #if we want a specific sigfrac
+    #sig_space = [0.1]
+    
+    start = 0.5
+    end = 6
+    step = step
+
+    weight_list = np.arange(start, end + step, step)
+    
+    for sig in sig_space:
+        print("Signal Fraction: ", sig)
+        count = 0
+        for w1 in weight_list:
+            for w2 in weight_list:
+                if count % 100 == 0:
+                    print(f"reached {w1} {w2}")
+                count+=1
+                #print(w1, w2)
+                sigfrac = sig
+
+                model_semiweak = compileSemiWeakly(model, feature_dims, parameters, m1, m2, w1, w2)
+
+                m1 = m1
+                m2 = m2
+                
+                #if computed this mass pair, break
+                
+                key = (sigfrac,m1,m2)
+                if key in z:
+                    break
+
+                test_background = int(1/2 *len(x[0,0, qq, noise]))
+                train_background = int(1/4 * len(x[0,0,qq, noise]))
+                train_data = int(1/4 * len(x[0,0,qq, noise]))
+                train_reference = int(1/4 * len(x[0,0,qq, noise]))
+                #signal
+                test_signal_length = int(1/2*len(x[m1,m2,qq, noise]))
+
+                #randomize signal events
+                random_test_signal_length = random.randint(0, test_signal_length - 1)
+                N = int(1/4 * (len(x[0,0,qq, noise])))
+                signal = x[m1, m2,qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
+
+                x_data_ = np.concatenate([x[0,0,qq, noise][test_background:],signal])
+                y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
+
+                X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
+                
+                with tf.device('/GPU:0'):
+                    y_val_pred = model.predict(X_val)
+                    auc = roc_auc_score(Y_val, y_val_pred)
+                AUC_list.append(auc)
+                
+        end_time = time.time()
+        elapsed_time = round(end_time - start_time, 3)
+        print(f"Time taken: {elapsed_time} seconds")
+        if key in z:
+            print("AUC Landscape for m1 = {} ".format(m1) + "and " + "m2 = {} ".format(m2) +" already exists for " + "{}".format(sigfrac) + " signal fraction")
+        else:
+            z[sigfrac, m1, m2] = AUC_list
+            AUC_list = []
+            np.save(file_name, z)
+    end_time_total = time.time()
+
+    elapsed_time_total = round(end_time_total - start_time, 3)
+    print(f"Total elapsed time: {elapsed_time_total} seconds")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--feature_dims", type=int, help="Number of feature dimensions")
@@ -142,7 +232,7 @@ if __name__ == "__main__":
     
     message = (
     "```"
-    "---------- Creating Landscape With the Following Parameters ----------\n"
+    "---------- Creating Landscapes With the Following Parameters ----------\n"
     f"Feature dimensions: {args.feature_dims}\n"
     f"Parameters: {args.parameters}\n"
     f"m1: {args.m1}\n"
@@ -155,6 +245,8 @@ if __name__ == "__main__":
     send_slack_message(message)
     print(message)
     eval_loss_landscape_6Features(model, args.feature_dims, args.parameters, args.m1, args.m2, x, args.step)
+    
+    eval_AUC_landscape_6Features(sigspace, model, args.feature_dims, args.parameters, args.m1, args.m2, args.step)
     
     filename = f"data/z_{args.parameters}param{args.m1}{args.m2}{args.feature_dims}{model}.npy"
     z = np.load(filename, allow_pickle = True).item()

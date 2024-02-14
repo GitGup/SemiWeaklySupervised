@@ -13,11 +13,11 @@ from utils import send_slack_message, send_slack_plot
 
 
 #load everything required
-x = load_data("data/x_array_qqq.npy", noise_dims = 0)
-x_data_qq = np.load("data/x_parametrized_data_qq.npy")
-y_data_qq = np.load("data/y_parametrized_data_qq.npy")
+x = load_data("x_array.npy", noise_dims = 0)
+x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_fixed.npy")
+y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_fixed.npy")
 #model_path = "model_qq_opt2"
-model_path = "/pscratch/sd/g/gupsingh/chromatic-fireworks-52"
+model_path = "/pscratch/sd/g/gupsingh/model_fixed"
 model_qq = tf.keras.models.load_model(model_path)
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
@@ -101,7 +101,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
 
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
 
-                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=500,
+                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=50,
                                                        validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
 
                 print(f"m1: {m1}",f"m2: {m2}", f"w1: {model_semiweak.trainable_weights[0].numpy()[0][0]}", f"w2: {model_semiweak.trainable_weights[1].numpy()[0][0]}")

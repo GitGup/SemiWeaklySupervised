@@ -17,9 +17,9 @@ start_time = time.time()
 noise_dims = 0
 #load all necessary data/files
 #"model_qq_opt2"
-model_name = "chromatic-fireworks-52"
+model_name = "model_fixed"
 model = tf.keras.models.load_model(model_name)
-x = load_data("data/x_array_qqq.npy", noise_dims = noise_dims)
+x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed.pkl", noise_dims = noise_dims)
 
 def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2, step):
     
@@ -54,10 +54,12 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
         count = 0
         for w1 in weight_list:
             for w2 in weight_list:
-                if count % 1000 == 0:
+                if count % 100 == 0:
                     print(f"reached {w1} {w2}")
                 count+=1
                 #print(w1, w2)
+                for l in model.layers:
+                    l.trainable=False
 
                 inputs_hold = tf.keras.Input(shape=(1,))
                 simple_model = Dense(1,use_bias = False,activation='relu',kernel_initializer=tf.keras.initializers.Constant(w1))(inputs_hold)
@@ -121,7 +123,7 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
         elapsed_time = round(end_time - start_time, 3)
         print(f"Time taken: {elapsed_time} seconds")
         if key in z:
-            print("Landscape for m1 = {} ".format(m1) + "and " + "m2 = {} ".format(m2) +" already exists for " + "{}".format(sigfrac) + " signal fraction")
+            print("Loss Landscape for m1 = {} ".format(m1) + "and " + "m2 = {} ".format(m2) +" already exists for " + "{}".format(sigfrac) + " signal fraction")
         else:
             z[sigfrac, m1, m2] = losses_list
             losses_list = []
@@ -134,24 +136,24 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
 qq = "qq"
 noise = False
 
-def eval_AUC_landscape_6Features(sigspace, model, feature_dims, parameters, m1, m2, step = 0.25):
-    start_time = time.time()
+def eval_AUC_landscape_6Features(model, feature_dims, parameters, m1, m2, step = 0.25):
+    
     #check if AUC dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"a_{feature_dims}_{parameters}_{m1}{m2}_{step}_{qq}.npy"
+    file_name = f"a_{feature_dims}{parameters}{m1}{m2}{step}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
-        z = np.load(file_name, allow_pickle = True).item()
+        a = np.load(file_name, allow_pickle = True).item()
     else:
         print("Dictionary doesn't exist, creating one...")
-        z = {}
+        a = {}
     #varying sigfrac, fixed mass pair
     
     AUC_list = []
 
     epsilon = 1e-4
-    sig_space = [np.logspace(-3, -1, 10)[-1]]
+    sigspace = [np.logspace(-3, -1, 10)[-1]]
     
     #if we want a specific sigfrac
     #sig_space = [0.1]
@@ -162,7 +164,7 @@ def eval_AUC_landscape_6Features(sigspace, model, feature_dims, parameters, m1, 
 
     weight_list = np.arange(start, end + step, step)
     
-    for sig in sig_space:
+    for sigfrac in sigspace:
         print("Signal Fraction: ", sig)
         count = 0
         for w1 in weight_list:
@@ -171,8 +173,9 @@ def eval_AUC_landscape_6Features(sigspace, model, feature_dims, parameters, m1, 
                     print(f"reached {w1} {w2}")
                 count+=1
                 #print(w1, w2)
-                sigfrac = sig
 
+                for l in model.layers:
+                    l.trainable=False
                 model_semiweak = compileSemiWeakly(model, feature_dims, parameters, m1, m2, w1, w2)
 
                 m1 = m1
@@ -181,7 +184,7 @@ def eval_AUC_landscape_6Features(sigspace, model, feature_dims, parameters, m1, 
                 #if computed this mass pair, break
                 
                 key = (sigfrac,m1,m2)
-                if key in z:
+                if key in a:
                     break
 
                 test_background = int(1/2 *len(x[0,0, qq, noise]))
@@ -202,19 +205,19 @@ def eval_AUC_landscape_6Features(sigspace, model, feature_dims, parameters, m1, 
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
                 
                 with tf.device('/GPU:0'):
-                    y_val_pred = model.predict(X_val)
-                    auc = roc_auc_score(Y_val, y_val_pred)
+                    y_val_pred = model_semiweak.predict(X_val_)
+                    auc = roc_auc_score(Y_val_, y_val_pred)
                 AUC_list.append(auc)
                 
         end_time = time.time()
         elapsed_time = round(end_time - start_time, 3)
         print(f"Time taken: {elapsed_time} seconds")
-        if key in z:
+        if key in a:
             print("AUC Landscape for m1 = {} ".format(m1) + "and " + "m2 = {} ".format(m2) +" already exists for " + "{}".format(sigfrac) + " signal fraction")
         else:
-            z[sigfrac, m1, m2] = AUC_list
+            a[sigfrac, m1, m2] = AUC_list
             AUC_list = []
-            np.save(file_name, z)
+            np.save(file_name, a)
     end_time_total = time.time()
 
     elapsed_time_total = round(end_time_total - start_time, 3)

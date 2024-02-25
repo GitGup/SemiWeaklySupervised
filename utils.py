@@ -40,6 +40,48 @@ def computemjj_txt(event):
     m2 = (pE1+pE2)**2-(px1+px2)**2-(py1+py2)**2-(pz1+pz2)**2
     return np.array(np.sqrt(m2)).flatten()
 
+#find the weights that didn't work and the corresponding mass pair
+def get_stuck_weights(sigspace, injections, m_initializations, m1, m2, weight_list1, weight_list2, decay):
+    # weight_list1 = np.load(f"data/weight_list1_runs_notebook{float(m1)}{float(m2)}_{decay}.npy", allow_pickle = True)
+    # weight_list2 = np.load(f"data/weight_list2_runs_notebook{float(m1)}{float(m2)}_{decay}.npy", allow_pickle = True)
+    
+    missed = {}
+
+    found_one = 0
+    found_both = 0
+    found_none = 0
+
+    for sigfrac in range(len(sigspace)):
+
+        for injection in range(injections):
+
+            m1_diff = abs(np.array(np.ones(len(weight_list1[sigfrac][injection]))*m1) - np.array(weight_list1[sigfrac][injection]))
+            m2_diff = abs(np.array(np.ones(len(weight_list2[sigfrac][injection]))*m2) - np.array(weight_list2[sigfrac][injection]))
+
+            count = 0
+            for diff1, diff2 in zip(m1_diff, m2_diff):
+                case1 = diff1 > 0.2 and diff2 > 0.2
+                case2 = diff1 < 0.2 and diff2 < 0.2
+                case3 = diff1 > 0.2 and diff2 < 0.2 or diff1 < 0.2 and diff2 > 0.2
+
+                if case1:
+                    found_none+=1
+                    missed[(sigspace[sigfrac], injection)] = (weight_list1[sigfrac][injection][count], weight_list2[sigfrac][injection][count])
+                    print(np.array(weight_list1[sigfrac][injection][count]), np.array(weight_list2[sigfrac][injection][count]))
+                elif case2:
+                    found_both+=1
+                elif case3:
+                    found_one+=1
+                    missed[(sigspace[sigfrac], injection)] = (weight_list1[sigfrac][injection][count], weight_list2[sigfrac][injection][count])
+                    print(np.array(weight_list1[sigfrac][injection][count]), np.array(weight_list2[sigfrac][injection][count]))
+                count+=1
+                
+    print(f"Found Both: {found_both}")
+    print(f"Found None: {found_none}")
+    print(f"Found One: {found_one}")
+            
+    return missed
+
 def pred_accuracy(y_test, scores):
     background_count, signal_count = 0, 0
 

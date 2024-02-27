@@ -13,8 +13,8 @@ import os
 from utils import send_slack_message, send_slack_plot
 
 #training data
-x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_fixed.npy")
-y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_fixed.npy")
+x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra.npy")
+y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra.npy")
 X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 42)
 
 pscratch_dir = "/pscratch/sd/g/gupsingh/"
@@ -29,8 +29,8 @@ config = {
     "output_activation": "sigmoid",
     "optimizer": "adam",
     "learning_rate": 0.01,
-    "loss": "MeanSquaredError",
-    "epochs": 1,
+    "loss": "binary_crossentropy",
+    "epochs": 5000,
     "batch_size": 1024
 }
 

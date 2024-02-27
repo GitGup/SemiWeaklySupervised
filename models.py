@@ -60,6 +60,9 @@ epsilon = 1e-4
 #SemiWeak Model
 def compileSemiWeakly(sigfrac, model, feature_dims, params, m1, m2, w1, w2):
     
+    for l in model.layers:
+        l.trainable=False
+        
     inputs_hold = tf.keras.Input(shape=(1,))
     simple_model = Dense(1,use_bias = False,activation='relu',kernel_initializer=tf.keras.initializers.Constant(w1), kernel_constraint=WeightConstraint())(inputs_hold)
     model3 = Model(inputs = inputs_hold, outputs = simple_model)
@@ -74,7 +77,7 @@ def compileSemiWeakly(sigfrac, model, feature_dims, params, m1, m2, w1, w2):
 
     inputs = tf.keras.Input(shape=(feature_dims,))
     inputs2 = tf.keras.layers.concatenate([inputs,model3(tf.ones_like(inputs)[:,0]),model32(tf.ones_like(inputs)[:,0])])
-
+    epsilon = 1e-4
     #physics prior
     hidden_layer_1 = model(inputs2)
     LLR = hidden_layer_1 / (1.-hidden_layer_1 + epsilon)
@@ -128,5 +131,5 @@ def compileSemiWeakly3Prong(sigfrac, model_qq, model_qqq, feature_dims, paramete
         LLR_xs_fixed = 1 + model33(tf.ones_like(inputs)[:,0])*model34(tf.ones_like(inputs)[:,0]) * LLR3 + (1-model34(tf.ones_like(inputs)[:,0]))*LLR2*model33(tf.ones_like(inputs)[:,0]) - model33(tf.ones_like(inputs)[:,0])
     ws = LLR_xs_fixed / (1.+LLR_xs_fixed+0.0001)
     SemiWeak3Prong = Model(inputs = inputs, outputs = ws)
-    SemiWeak3Prong.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate = lr_schedule))
+    SemiWeak3Prong.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate = 0.01))
     return SemiWeak3Prong

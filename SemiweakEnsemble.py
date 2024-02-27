@@ -16,9 +16,9 @@ from utils import send_slack_message, send_slack_plot, get_stuck_weights
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = 0)
 x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra.npy")
 y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra.npy")
-model_path = "/pscratch/sd/g/gupsingh/lilac-glade-67"
+model_path = "/pscratch/sd/g/gupsingh/volcanic-yogurt-69"
 model_qq = tf.keras.models.load_model(model_path)
-es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+#es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
 #Loop over signal injection amounts M
 #For a given signal injection amount, inject events according to N ~ Poission(M)
@@ -46,7 +46,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
     tuple_rates_weak = {}
     
     qq = decay
-    test_signal = int(1/2*len(x[m1,m2, qq, noise]))
+    test_signal = int(1/2*len(x[m1,m2, qq, noise]) + 1)
 
     sigspace = np.flip(np.logspace(-3,-1,10))
     for sigfrac in sigspace:
@@ -106,8 +106,8 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
 
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
 
-                history_semiweak3prong = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=50,
-                                                       validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0, callbacks = [es])
+                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=50,
+                                                       validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0)
                 
                 print(f"m1: {m1}",f"m2: {m2}", f"w1: {model_semiweak.trainable_weights[0].numpy()[0][0]}", f"w2: {model_semiweak.trainable_weights[1].numpy()[0][0]}")
 
@@ -121,7 +121,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
                 scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
                 #per-event probability
                 score1_kruns.append(scores)
-                scoreLossdict[(min(history_semiweak3prong.history["loss"]))] = scores
+                scoreLossdict[(min(history_semiweak.history["loss"]))] = scores
 
             #kruns finished
             weight_list1_injections.append(weight_list1_kruns)
@@ -178,27 +178,30 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         
         maxsicandstd1[sigfrac] = (np.median(msic1_median), np.std(msic1_median))
         maxsicandstd2[sigfrac] = (np.median(msic2), np.std(msic2))
-        np.save(f"data/maxsicandstd1_notebook{float(m1)}{float(m2)}_{decay}.npy", maxsicandstd1)
-        np.save(f"data/maxsicandstd2_notebook{float(m1)}{float(m2)}_{decay}.npy", maxsicandstd2)
+        if len(x[0,0,qq,noise]) > 121352:
+            extra = True
+        extra_str = "_extra" if extra else ""
+        np.save(f"data/maxsicandstd1_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
+        np.save(f"data/maxsicandstd2_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
         
     stuck_weights = get_stuck_weights(sigspace, injections, m_initializations, m1, m2, weight_list1_runs, weight_list2_runs, decay)
-    np.save(f"data/stuck_weights{float(m1)}{float(m2)}_{decay}.npy", stuck_weights)
-    np.save(f"data/tuplerates{float(m1)}{float(m2)}_{decay}.npy", tuple_rates_semiweak)
-    np.save(f"data/tuplerates2{float(m1)}{float(m2)}_{decay}.npy", tuple_rates_weak)
+    np.save(f"data/stuck_weights{float(m1)}{float(m2)}_{decay}{extra}.npy", stuck_weights)
+    np.save(f"data/tuplerates{float(m1)}{float(m2)}_{decay}{extra}.npy", tuple_rates_semiweak)
+    np.save(f"data/tuplerates2{float(m1)}{float(m2)}_{decay}{extra}.npy", tuple_rates_weak)
     
-    np.save(f"data/msic1_median_notebook{float(m1)}{float(m2)}_{decay}.npy", maxsicandstd1)
-    np.save(f"data/msic2_median_notebook{float(m1)}{float(m2)}_{decay}.npy", maxsicandstd2)
-    np.save(f"data/std1_median_notebook{float(m1)}{float(m2)}_{decay}.npy", std1_runs)
-    np.save(f"data/std2_median_notebook{float(m1)}{float(m2)}_{decay}.npy", std2_runs)
-    np.save(f"data/weight_list1_runs_notebook{float(m1)}{float(m2)}_{decay}.npy", weight_list1_runs)
-    np.save(f"data/weight_list2_runs_notebook{float(m1)}{float(m2)}_{decay}.npy", weight_list2_runs)
-    np.save(f"data/weight_list3_runs_notebook{float(m1)}{float(m2)}_{decay}.npy", weight_list3_runs)
+    np.save(f"data/msic1_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
+    np.save(f"data/msic2_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
+    np.save(f"data/std1_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", std1_runs)
+    np.save(f"data/std2_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", std2_runs)
+    np.save(f"data/weight_list1_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list1_runs)
+    np.save(f"data/weight_list2_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list2_runs)
+    np.save(f"data/weight_list3_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list3_runs)
     
-    np.save(f"data/score1_injections_raw_runs{float(m1)}{float(m2)}_{decay}.npy", score1_injections_raw_runs)
-    np.save(f"data/score2_injections_raw_runs{float(m1)}{float(m2)}_{decay}.npy", score2_injections_raw_runs)
+    np.save(f"data/score1_injections_raw_runs{float(m1)}{float(m2)}_{decay}{extra}.npy", score1_injections_raw_runs)
+    np.save(f"data/score2_injections_raw_runs{float(m1)}{float(m2)}_{decay}{extra}.npy", score2_injections_raw_runs)
     if decay == "qqq":
-        np.save(f"data/weight_list4_runs_notebook{float(m1)}{float(m2)}_{decay}.npy", weight_list4_runs)
-    np.save(f"data/initial_weights_runs_notebook{float(m1)}{float(m2)}_{decay}.npy", initial_weights_runs)
+        np.save(f"data/weight_list4_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list4_runs)
+    np.save(f"data/initial_weights_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", initial_weights_runs)
     
 if __name__ == "__main__":
     mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]

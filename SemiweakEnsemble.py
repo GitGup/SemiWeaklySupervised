@@ -181,27 +181,27 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         if len(x[0,0,qq,noise]) > 121352:
             extra = True
         extra_str = "_extra" if extra else ""
-        np.save(f"data/maxsicandstd1_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
-        np.save(f"data/maxsicandstd2_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
+        np.save(f"data/maxsicandstd1_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
+        np.save(f"data/maxsicandstd2_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
         
     stuck_weights = get_stuck_weights(sigspace, injections, m_initializations, m1, m2, weight_list1_runs, weight_list2_runs, decay)
     np.save(f"data/stuck_weights{float(m1)}{float(m2)}_{decay}{extra}.npy", stuck_weights)
     np.save(f"data/tuplerates{float(m1)}{float(m2)}_{decay}{extra}.npy", tuple_rates_semiweak)
     np.save(f"data/tuplerates2{float(m1)}{float(m2)}_{decay}{extra}.npy", tuple_rates_weak)
     
-    np.save(f"data/msic1_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
-    np.save(f"data/msic2_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
-    np.save(f"data/std1_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", std1_runs)
-    np.save(f"data/std2_median_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", std2_runs)
-    np.save(f"data/weight_list1_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list1_runs)
-    np.save(f"data/weight_list2_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list2_runs)
-    np.save(f"data/weight_list3_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list3_runs)
+    np.save(f"data/msic1_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
+    np.save(f"data/msic2_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
+    np.save(f"data/std1_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", std1_runs)
+    np.save(f"data/std2_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", std2_runs)
+    np.save(f"data/weight_list1_runs_script{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list1_runs)
+    np.save(f"data/weight_list2_runs_script{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list2_runs)
+    np.save(f"data/weight_list3_runs_script{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list3_runs)
     
     np.save(f"data/score1_injections_raw_runs{float(m1)}{float(m2)}_{decay}{extra}.npy", score1_injections_raw_runs)
     np.save(f"data/score2_injections_raw_runs{float(m1)}{float(m2)}_{decay}{extra}.npy", score2_injections_raw_runs)
     if decay == "qqq":
-        np.save(f"data/weight_list4_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list4_runs)
-    np.save(f"data/initial_weights_runs_notebook{float(m1)}{float(m2)}_{decay}{extra}.npy", initial_weights_runs)
+        np.save(f"data/weight_list4_runs_script{float(m1)}{float(m2)}_{decay}{extra}.npy", weight_list4_runs)
+    np.save(f"data/initial_weights_runs_script{float(m1)}{float(m2)}_{decay}{extra}.npy", initial_weights_runs)
     
 if __name__ == "__main__":
     mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]

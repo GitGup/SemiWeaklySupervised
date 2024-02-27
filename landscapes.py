@@ -9,23 +9,25 @@ import argparse
 #custom moduiles
 from utils import send_slack_message, send_slack_plot
 from plotting import create_3D_loss_manifold
-    
-qq = "qq"
+
+#load all necessary data/files
+noise_dims = 0
+x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
+
+model_path = "/pscratch/sd/g/gupsingh/lilac-glade-67"
+#model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
+model = tf.keras.models.load_model(model_path)
+
 noise = False
 start_time = time.time()
-
-noise_dims = 0
-#load all necessary data/files
-#"model_qq_opt2"
-model_name = "model_fixed"
-model = tf.keras.models.load_model(model_name)
-x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed.pkl", noise_dims = noise_dims)
-
-def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2, step):
-    
+decay = "qq"
+def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
+    qq = decay
+    noise = False
+    start_time = time.time()
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{qq}.npy"
+    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -33,15 +35,10 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
     else:
         print("Dictionary doesn't exist, creating one...")
         z = {}
-    #varying sigfrac, fixed mass pair
-    
+        
     losses_list = []
-
     epsilon = 1e-4
-    
-    #if we want a specific sigfrac
-    #sigspace = np.logspace(-3, -1, 10)
-    sigspace = sigspace
+    sigspace = [0.1]
     
     start = 0.5
     end = 6
@@ -58,74 +55,53 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
                     print(f"reached {w1} {w2}")
                 count+=1
                 #print(w1, w2)
-                for l in model.layers:
-                    l.trainable=False
 
-                inputs_hold = tf.keras.Input(shape=(1,))
-                simple_model = Dense(1,use_bias = False,activation='relu',kernel_initializer=tf.keras.initializers.Constant(w1))(inputs_hold)
-                model3 = Model(inputs = inputs_hold, outputs = simple_model)
+                if decay == "qq":
+                    for l in model_qq.layers:
+                        l.trainable=False
+                    model_semiweak = compileSemiWeakly(sigfrac, model_qq, feature_dims, parameters, m1, m2, w1, w2)
+                    
+                if decay == "qqq":
+                    for l in model_qqq.layers:
+                        l.trainable=False
+                    model_semiweak = compileSemiWeakly3Prong(model_qq, model_qqq, feature_dims, parameters, m1, m2, w1, w2)
 
-                inputs_hold2 = tf.keras.Input(shape=(1,))
-                simple_model2 = Dense(1,use_bias = False,activation='relu',kernel_initializer=tf.keras.initializers.Constant(w2))(inputs_hold2)
-                model32 = Model(inputs = inputs_hold2, outputs = simple_model2)
-
-                inputs_hold3 = tf.keras.Input(shape=(1,))
-                simple_model3 = tf.exp(Dense(1,use_bias = False,activation='linear',kernel_initializer=tf.keras.initializers.Constant(-1))(inputs_hold3))
-                model33 = Model(inputs = inputs_hold3, outputs = simple_model3)
-
-                inputs = tf.keras.Input(shape=(feature_dims,))
-                inputs2 = tf.keras.layers.concatenate([inputs,model3(tf.ones_like(inputs)[:,0]),model32(tf.ones_like(inputs)[:,0])])
-                #physics prior
-                hidden_layer_1 = model(inputs2)
-                LLR = hidden_layer_1 / (1.-hidden_layer_1 + epsilon)
-
-                if params == 2:
-                    LLR_xs = 1 + sigfrac*LLR - sigfrac
-                elif params == 3:
-                    LLR_xs = 1 + model33(tf.ones_like(inputs)[:,0])*LLR - model33(tf.ones_like(inputs)[:,0])
-                else:
-                    print("Choose 2 or 3 parameters")
-                ws = LLR_xs / (1.+LLR_xs)
-
-                SemiWeakModel = Model(inputs = inputs, outputs = ws)
-                SemiWeakModel.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate = 0.01))
                 m1 = m1
                 m2 = m2
                 
                 #if computed this mass pair, break
-                key = (sigfrac,m1,m2)
+                key = (sigfrac,m1,m2, decay)
                 if key in z:
                     break
 
-                test_background = int(1/2 * len(x[0,0, qq, noise]))
-                train_reference = int(1/4 *len(x[0,0, qq, noise]))
-                train_data = int(1/4 * len(x[0,0, qq, noise]))
-                test_signal = int(1/2*len(x[m1,m2, qq, noise]))
+                test_background = int(1/2 *len(x[0,0, qq, noise])+1)
+                train_background = int(1/4 * len(x[0,0,qq, noise]))
+                train_data = int(1/4 * len(x[0,0,qq, noise]))
+                train_reference = int(1/4 * len(x[0,0,qq, noise]))
+                #signal
+                test_signal_length = int(1/2*len(x[m1,m2,qq, noise])+1)
 
-                #randomized signal
-                random_test_signal_length = random.randint(0, test_signal - 1)
-                N = int(1/4 * (len(x[0,0, qq, noise])))
-                signal = x[m1, m2, qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
+                #randomize signal events
+                random_test_signal_length = random.randint(0, test_signal_length - 1)
+                N = int(1/4 * (len(x[0,0,qq, noise])))
+                signal = x[m1, m2,qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
 
-                #fixed signal portion
-                #signal = x[m1, m2, qq, noise][test_signal:test_signal + int(sigfrac*N)]
-
-                x_data_ = np.concatenate([x[0,0, qq, noise][test_background:],signal])
+                x_data_ = np.concatenate([x[0,0,qq, noise][test_background:],signal])
                 y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
-                
+
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
                 
                 with tf.device('/GPU:0'):
-                    loss = SemiWeakModel.evaluate(X_val_, Y_val_, verbose = 0)
+                    loss = model_semiweak.evaluate(X_val_, Y_val_, verbose = 0)
                 losses_list.append(loss)
                 
         end_time = time.time()
         elapsed_time = round(end_time - start_time, 3)
         print(f"Time taken: {elapsed_time} seconds")
         if key in z:
-            print("Loss Landscape for m1 = {} ".format(m1) + "and " + "m2 = {} ".format(m2) +" already exists for " + "{}".format(sigfrac) + " signal fraction")
+            print(f"Loss Landscape for m1 = {m1} and m2 = {m2} already exists for {sigfrac} signal fraction and decay {decay}")
         else:
-            z[sigfrac, m1, m2] = losses_list
+            z[sigfrac, m1, m2, decay] = losses_list
             losses_list = []
             np.save(file_name, z)
     end_time_total = time.time()
@@ -133,14 +109,15 @@ def eval_loss_landscape_6Features(sigspace, model, feature_dims, params, m1, m2,
     elapsed_time_total = round(end_time_total - start_time, 3)
     print(f"Total elapsed time: {elapsed_time_total} seconds")
 
-qq = "qq"
-noise = False
-
-def eval_AUC_landscape_6Features(model, feature_dims, parameters, m1, m2, step = 0.25):
+def eval_AUC_landscape(feature_dims, parameters, m1, m2, step, decay):
+    qq = decay
+    noise = False
     
+    start_time = time.time()
+
     #check if AUC dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"a_{feature_dims}{parameters}{m1}{m2}{step}.npy"
+    file_name = f"data/landscapes/a_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -148,16 +125,12 @@ def eval_AUC_landscape_6Features(model, feature_dims, parameters, m1, m2, step =
     else:
         print("Dictionary doesn't exist, creating one...")
         a = {}
-    #varying sigfrac, fixed mass pair
     
     AUC_list = []
 
     epsilon = 1e-4
-    sigspace = [np.logspace(-3, -1, 10)[-1]]
-    
-    #if we want a specific sigfrac
-    #sig_space = [0.1]
-    
+    sigspace = [0.1]
+
     start = 0.5
     end = 6
     step = step
@@ -165,7 +138,7 @@ def eval_AUC_landscape_6Features(model, feature_dims, parameters, m1, m2, step =
     weight_list = np.arange(start, end + step, step)
     
     for sigfrac in sigspace:
-        print("Signal Fraction: ", sig)
+        print("Signal Fraction: ", sigfrac)
         count = 0
         for w1 in weight_list:
             for w2 in weight_list:
@@ -174,25 +147,31 @@ def eval_AUC_landscape_6Features(model, feature_dims, parameters, m1, m2, step =
                 count+=1
                 #print(w1, w2)
 
-                for l in model.layers:
-                    l.trainable=False
-                model_semiweak = compileSemiWeakly(model, feature_dims, parameters, m1, m2, w1, w2)
+                if decay == "qq":
+                    for l in model.layers:
+                        l.trainable=False
+                    model_semiweak = compileSemiWeakly(model, feature_dims, parameters, m1, m2, w1, w2)
+                    
+                if decay == "qqq":
+                    for l in model_qqq.layers:
+                        l.trainable=False
+                    model_semiweak = compileSemiWeakly3Prong(model_qq, model_qqq, feature_dims, parameters, m1, m2, w1, w2)
 
                 m1 = m1
                 m2 = m2
                 
                 #if computed this mass pair, break
                 
-                key = (sigfrac,m1,m2)
+                key = (sigfrac,m1,m2, decay)
                 if key in a:
                     break
 
-                test_background = int(1/2 *len(x[0,0, qq, noise]))
+                test_background = int(1/2 *len(x[0,0, qq, noise])+1)
                 train_background = int(1/4 * len(x[0,0,qq, noise]))
                 train_data = int(1/4 * len(x[0,0,qq, noise]))
                 train_reference = int(1/4 * len(x[0,0,qq, noise]))
                 #signal
-                test_signal_length = int(1/2*len(x[m1,m2,qq, noise]))
+                test_signal_length = int(1/2*len(x[m1,m2,qq, noise])+1)
 
                 #randomize signal events
                 random_test_signal_length = random.randint(0, test_signal_length - 1)
@@ -213,16 +192,15 @@ def eval_AUC_landscape_6Features(model, feature_dims, parameters, m1, m2, step =
         elapsed_time = round(end_time - start_time, 3)
         print(f"Time taken: {elapsed_time} seconds")
         if key in a:
-            print("AUC Landscape for m1 = {} ".format(m1) + "and " + "m2 = {} ".format(m2) +" already exists for " + "{}".format(sigfrac) + " signal fraction")
+            print(f"AUC Landscape for m1 = {m1} and m2 = {m2} already exists for {sigfrac} signal fraction and decay {decay}")
         else:
-            a[sigfrac, m1, m2] = AUC_list
+            a[sigfrac, m1, m2, decay] = AUC_list
             AUC_list = []
             np.save(file_name, a)
     end_time_total = time.time()
 
     elapsed_time_total = round(end_time_total - start_time, 3)
     print(f"Total elapsed time: {elapsed_time_total} seconds")
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -231,34 +209,60 @@ if __name__ == "__main__":
     parser.add_argument("--m1", type=int, help="Value for m1")
     parser.add_argument("--m2", type=int, help="Value for m2")
     parser.add_argument("--step", type=float, help="Resolution of Weight Space")
+    parser.add_argument("--case", type=str, help="Which to evaluate? Loss or AUC landscape?")
     args = parser.parse_args()
     
     message = (
     "```"
-    "---------- Creating Landscapes With the Following Parameters ----------\n"
+    f"---------- Creating {args.case} Landscape With the Following Parameters ----------\n"
     f"Feature dimensions: {args.feature_dims}\n"
     f"Parameters: {args.parameters}\n"
     f"m1: {args.m1}\n"
     f"m2: {args.m2}\n"
-    f"model: {model_name}\n"
+    f"model: {model_path}\n"
     "----------------------------------------------------------------------\n"
     "```"
 )
     
     send_slack_message(message)
     print(message)
-    eval_loss_landscape_6Features(model, args.feature_dims, args.parameters, args.m1, args.m2, x, args.step)
     
-    eval_AUC_landscape_6Features(sigspace, model, args.feature_dims, args.parameters, args.m1, args.m2, args.step)
+    feature_dims = args.feature_dims
+    parameters = args.parameters
+    m1 = args.m1
+    m2 = args.m2
+    step = args.step
     
-    filename = f"data/z_{args.parameters}param{args.m1}{args.m2}{args.feature_dims}{model}.npy"
-    z = np.load(filename, allow_pickle = True).item()
-    sigfrac = 0.1
-    elv = 60
-    azim = 20
+    if args.case == "Loss":
+        eval_loss_landscape(args.feature_dims, args.parameters, args.m1, args.m2, x, args.step, decay)
+        
+        filename = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}.npy"
+        z = np.load(filename, allow_pickle = True).item()
+        sigfrac = 0.1
+        elv = 60
+        azim = 20
+
+        create_3D_loss_manifold(sigfrac, m1, m2, z, step, elv, azim, save = True)
+        loss_landscape_nofit(sigfrac, m1, m2, z, step, save = True)
+        img_paths = [f"plots/landscapes/l_{float(m1)}{float(m2)}.png", f"plots/manifolds/lm_{float(m1)}{float(m2)}.png"]
+        send_slack_plot(img_paths)
+        send_slack_message("Done!")
     
-    create_3D_loss_manifold(sigfrac, m1, m2, z, step, elv, azim, save = True)
-    loss_landscape_nofit(sigfrac, m1, m2, z, step, save = True)
-    img_paths = [f"plots/landscape{float(m1)}{float(m2)}.png", f"plots/manifolds{float(m1)}{float(m2)}.png"]
-    send_slack_plot(img_paths)
-    send_slack_message("Done!")
+    elif args.case == "AUC":
+        eval_AUC_landscape(sigspace, args.feature_dims, args.parameters, args.m1, args.m2, args.step, decay)
+        a = np.load(filename, allow_pickle = True).item()
+        AUC_landscape_nofit(sigfrac, m1, m2, a, step=0.25, save = True)
+        img_path = f"plots/landscapes/AUCL_{float(m1)}{float(m2)}.png"
+        send_slack_plot(img_path)
+        send_slack_message("Done!")
+    elif args.case == "both":
+        z = np.load(filename, allow_pickle = True).item()
+        a = np.load(filename, allow_pickle = True).item()
+        eval_loss_landscape(model, args.feature_dims, args.parameters, args.m1, args.m2, x, args.step, decay)
+        eval_AUC_landscape(sigspace, model, args.feature_dims, args.parameters, args.m1, args.m2, args.step, decay)
+        plot_landscapes(0.1, args.m1, args.m2, z, a, args.step, save = True)
+        img_path = f"plots/bothlandscape{float(m1)}{float(m2)}.png"
+        send_slack_plot(img_paths)
+        send_slack_message("Done!")
+    else:
+        print("Case Error: Possible Cassses are Loss, AUC, or Both")

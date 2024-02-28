@@ -9,7 +9,7 @@ from mpl_toolkits.mplot3d import Axes3D
 sea.set(style="white")
 
 #plot landscape dynamically
-def loss_landscape_nofit(sigfrac, m1, m2, z, step=0.25, save = False):
+def loss_landscape_nofit(sigfrac, m1, m2, z, step=0.25, save = False, decay = "qq"):
     start = 0.5
     end = 6
     step = step
@@ -18,7 +18,7 @@ def loss_landscape_nofit(sigfrac, m1, m2, z, step=0.25, save = False):
     grid_axes = [(w1, w2) for w1 in weight_list for w2 in weight_list]
     w1_values, w2_values = zip(*grid_axes)
 
-    loss_values = list(z[sigfrac, m1, m2])
+    loss_values = list(z[sigfrac, m1, m2, decay])
     min_loss = min(loss_values)
     max_loss = max(loss_values)
     normalized_loss = [(x - min_loss) / (max_loss - min_loss) for x in loss_values]
@@ -39,14 +39,14 @@ def loss_landscape_nofit(sigfrac, m1, m2, z, step=0.25, save = False):
     plt.show()
     
     if save == True:
-        plt.savefig(f'plots/landscape{float(m1)}{float(m2)}.png', dpi=450, bbox_inches='tight')
+        plt.savefig(f'plots/landscape{float(m1)}{float(m2)}_{decay}.png', dpi=450, bbox_inches='tight')
     
     return h
 
 #Loss Landscape but 3D
 #change elv and azim for viewing angle
 #step is resolution
-def create_3D_loss_manifold(sigfrac, m1, m2, z, step, elev, azim, save = False):
+def create_3D_loss_manifold(sigfrac, m1, m2, z, step, elev, azim, save = False, decay = "qq"):
 
     start = 0.5
     end = 6
@@ -61,7 +61,7 @@ def create_3D_loss_manifold(sigfrac, m1, m2, z, step, elev, azim, save = False):
 
     w1_values, w2_values = zip(*grid_axes)
 
-    loss_values = list(z[sigfrac, m1, m2])
+    loss_values = list(z[sigfrac, m1, m2, decay])
 
     x = w1_values
     y = w2_values
@@ -92,7 +92,7 @@ def create_3D_loss_manifold(sigfrac, m1, m2, z, step, elev, azim, save = False):
     ax.view_init(elev=elev, azim=azim)
     
     if save == True:
-        plt.savefig(f'plots/manifold{float(m1)}{float(m2)}.png', dpi=450, bbox_inches='tight')
+        plt.savefig(f'plots/manifold{float(m1)}{float(m2)}_{decay}.png', dpi=450, bbox_inches='tight')
     return ax
 
 #interpolating using scipy RectBivariateSpline
@@ -152,6 +152,40 @@ def plot_interpolated_landscape(sigfrac, m1, m2, z, step, save = False):
         plt.savefig(f'plots/interpolation{float(m1)}{float(m2)}.png', dpi=450, bbox_inches='tight')
     return fig
 
+def AUC_landscape_nofit(sigfrac, m1, m2, a, step=0.25, save = False):
+    start = 0.5
+    end = 6
+    step = step
+    
+    weight_list = np.arange(start, end + step, step)
+    grid_axes = [(w1, w2) for w1 in weight_list for w2 in weight_list]
+    w1_values, w2_values = zip(*grid_axes)
+
+    loss_values = list(a[sigfrac, m1, m2])
+    min_loss = min(loss_values)
+    max_loss = max(loss_values)
+    normalized_loss = [(x - min_loss) / (max_loss - min_loss) for x in loss_values]
+    bins = int(np.sqrt(len(z[sigfrac, m1, m2])))
+
+    star1_coords = (m1, m2)
+    star2_coords = (m2, m1)
+
+    plt.figure(figsize=(8, 6))
+    h = plt.hist2d(w1_values, w2_values, bins=(bins, bins), cmap='viridis', weights=normalized_loss)
+    plt.scatter(*star1_coords, c='red', marker='*', s=200, label='Star 1')
+    plt.scatter(*star2_coords, c='blue', marker='*', s=200, label='Star 2')
+    plt.colorbar(label='Loss (BCE)')
+    plt.xlabel('m1')
+    plt.ylabel('m2')
+    plt.title('6 Features (m1 = {} | m2 = {}) sigfrac AUC Landscape: {:.4f}'.format(m1, m2, sigfrac))
+    plt.legend()
+    plt.show()
+    
+    if save == True:
+        plt.savefig(f'plots/landscapes/AUCL_{float(m1)}{float(m2)}.png', dpi=450, bbox_inches='tight')
+    
+    return h
+
 def plot_landscapes(sigfrac, m1, m2, z, a, step, save = False):
     start = 0.5
     end = 6
@@ -196,5 +230,5 @@ def plot_landscapes(sigfrac, m1, m2, z, a, step, save = False):
     #plt.tight_layout()
     fig.suptitle(f"$m_{1}: ${m1 * 100} $m_{2}: {m2 * 100}$")
     if save == True:
-        plt.savefig(f'plots/bothlandscape{float(m1)}{float(m2)}.png', dpi=450, bbox_inches='tight')
+        plt.savefig(f"plots/bothlandscape{float(m1)}{float(m2)}.png", dpi=450, bbox_inches='tight')
     return ax

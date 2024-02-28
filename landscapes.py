@@ -9,14 +9,16 @@ import argparse
 #custom moduiles
 from utils import send_slack_message, send_slack_plot
 from plotting import create_3D_loss_manifold
+from models import compileSemiWeakly, compileSemiWeakly3Prong
 
 #load all necessary data/files
 noise_dims = 0
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
 
-model_path = "/pscratch/sd/g/gupsingh/lilac-glade-67"
+model_path = "/pscratch/sd/g/gupsingh/eager-rain-75"
+#model_path = "/pscratch/sd/g/gupsingh/copper-serenity-64qq"
 #model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
-model = tf.keras.models.load_model(model_path)
+model_qq = tf.keras.models.load_model(model_path)
 
 noise = False
 start_time = time.time()
@@ -27,7 +29,13 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
     start_time = time.time()
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}.npy"
+    
+    #if using extra QCD background
+    if len(x[0,0,qq, noise]) > 121352:
+        extra = True
+        
+    extra_str = "_extra" if extra else ""
+    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -38,7 +46,7 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
         
     losses_list = []
     epsilon = 1e-4
-    sigspace = [0.1]
+    sigspace = np.logspace(-3,-1,10)
     
     start = 0.5
     end = 6
@@ -129,7 +137,7 @@ def eval_AUC_landscape(feature_dims, parameters, m1, m2, step, decay):
     AUC_list = []
 
     epsilon = 1e-4
-    sigspace = [0.1]
+    sigspace = np.logspace(-3,-1,10)
 
     start = 0.5
     end = 6
@@ -234,7 +242,7 @@ if __name__ == "__main__":
     step = args.step
     
     if args.case == "Loss":
-        eval_loss_landscape(args.feature_dims, args.parameters, args.m1, args.m2, x, args.step, decay)
+        eval_loss_landscape(args.feature_dims, args.parameters, args.m1, args.m2, args.step, decay)
         
         filename = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}.npy"
         z = np.load(filename, allow_pickle = True).item()
@@ -258,7 +266,7 @@ if __name__ == "__main__":
     elif args.case == "both":
         z = np.load(filename, allow_pickle = True).item()
         a = np.load(filename, allow_pickle = True).item()
-        eval_loss_landscape(model, args.feature_dims, args.parameters, args.m1, args.m2, x, args.step, decay)
+        eval_loss_landscape(model, args.feature_dims, args.parameters, args.m1, args.m2, args.step, decay)
         eval_AUC_landscape(sigspace, model, args.feature_dims, args.parameters, args.m1, args.m2, args.step, decay)
         plot_landscapes(0.1, args.m1, args.m2, z, a, args.step, save = True)
         img_path = f"plots/bothlandscape{float(m1)}{float(m2)}.png"

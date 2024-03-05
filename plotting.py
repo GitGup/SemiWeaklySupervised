@@ -96,8 +96,8 @@ def create_3D_loss_manifold(sigfrac, m1, m2, z, step, elev, azim, save = False, 
     return ax
 
 #interpolating using scipy RectBivariateSpline
-def plot_interpolated_landscape(sigfrac, m1, m2, z, step, save = False):
-    
+def plot_interpolated_landscape(sigfrac, m1, m2, z, step, decay = "qq", save = False):
+
     start = 0.5
     end = 6
     step = step
@@ -109,7 +109,8 @@ def plot_interpolated_landscape(sigfrac, m1, m2, z, step, save = False):
 
     x, y = np.meshgrid(x_values, y_values)
 
-    loss_values_flat = z[sigfrac, m1, m2]
+    #loss_values_flat = np.array(z[1e-6, 5, 1, "qq"])[:,0]
+    loss_values_flat = z[sigfrac, m1, m2, decay]
     loss_values = np.array(loss_values_flat).reshape(x.shape)
 
     interp_spline = RectBivariateSpline(x_values, y_values, loss_values, s = 0)
@@ -134,23 +135,24 @@ def plot_interpolated_landscape(sigfrac, m1, m2, z, step, save = False):
     ax3d.view_init(elev=70, azim=250)
 
     #2d projection
-    fig, ax = plt.subplots(1, 2, figsize=(8, 6))
-    ax[0].pcolormesh(x, y, loss_values, cmap='viridis')
+    fig, ax = plt.subplots(1, 2, figsize=(16, 6))
+    h0 = ax[0].pcolormesh(x, y, loss_values, cmap='viridis')
     ax[0].set_aspect("equal")
     ax[0].set_title(f"$m_{1} = {m1} \quad m_{2} = {m2} \quad$" + f"sigfrac ={sigfrac}")
     ax[0].set_xlabel(r"$w_{1}$")
     ax[0].set_ylabel(r"$w_{2}$")
-
-    ax[1].contourf(xi, yi, zi, cmap='viridis')
+    cbar = plt.colorbar(h0, ax=ax[0])    
+    
+    h1 = ax[1].contourf(xi, yi, zi, cmap='viridis')
     ax[1].set_aspect("equal")
-    ax[1].set_title('Interpolated'.format(m1, m2, sigfrac))
+    ax[1].set_title(f"$m_{1} = {m1} \quad m_{2} = {m2} \quad$" + f"sigfrac ={sigfrac}")
     ax[1].set_xlabel(r"$w_{1}$")
     ax[1].set_ylabel(r"$w_{2}$")
-
+    cbar = plt.colorbar(h1, ax=ax[1])
+    
     plt.tight_layout()
     if save == True:
         plt.savefig(f'plots/interpolation{float(m1)}{float(m2)}.png', dpi=450, bbox_inches='tight')
-    return fig
 
 def AUC_landscape_nofit(sigfrac, m1, m2, a, step=0.25, save = False):
     start = 0.5

@@ -8,14 +8,15 @@ import argparse
 
 #custom moduiles
 from utils import send_slack_message, send_slack_plot
-from plotting import create_3D_loss_manifold
+from plotting import create_3D_loss_manifold, loss_landscape_nofit
 from models import compileSemiWeakly, compileSemiWeakly3Prong
 
 #load all necessary data/files
 noise_dims = 0
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
 
-model_path = "/pscratch/sd/g/gupsingh/eager-rain-75"
+model_name = "swift-night-80"
+model_path = "/pscratch/sd/g/gupsingh/" + model_name
 #model_path = "/pscratch/sd/g/gupsingh/copper-serenity-64qq"
 #model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
 model_qq = tf.keras.models.load_model(model_path)
@@ -35,7 +36,7 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
         extra = True
         
     extra_str = "_extra" if extra else ""
-    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra}.npy"
+    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra_str}_{model_name}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -46,7 +47,8 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
         
     losses_list = []
     epsilon = 1e-4
-    sigspace = np.logspace(-3,-1,10)
+    #sigspace = np.logspace(-3,-1,10)
+    sigspace = [1e-6]
     
     start = 0.5
     end = 6
@@ -87,12 +89,14 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
                 train_data = int(1/4 * len(x[0,0,qq, noise]))
                 train_reference = int(1/4 * len(x[0,0,qq, noise]))
                 #signal
-                test_signal_length = int(1/2*len(x[m1,m2,qq, noise])+1)
+                test_signal_length = int(1/2*len(x[m1,m2,qq, noise]))
 
                 #randomize signal events
                 random_test_signal_length = random.randint(0, test_signal_length - 1)
                 N = int(1/4 * (len(x[0,0,qq, noise])))
                 signal = x[m1, m2,qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
+
+                print(f"---------------SIGNAL AMOUNT: {len(signal)} -----------")
 
                 x_data_ = np.concatenate([x[0,0,qq, noise][test_background:],signal])
                 y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
@@ -122,10 +126,16 @@ def eval_AUC_landscape(feature_dims, parameters, m1, m2, step, decay):
     noise = False
     
     start_time = time.time()
+    
+    #if using extra QCD background
+    if len(x[0,0,qq, noise]) > 121352:
+        extra = True
+        
+    extra_str = "_extra" if extra else ""
 
     #check if AUC dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
-    file_name = f"data/landscapes/a_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}.npy"
+    file_name = f"data/landscapes/a_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra_str}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -179,7 +189,7 @@ def eval_AUC_landscape(feature_dims, parameters, m1, m2, step, decay):
                 train_data = int(1/4 * len(x[0,0,qq, noise]))
                 train_reference = int(1/4 * len(x[0,0,qq, noise]))
                 #signal
-                test_signal_length = int(1/2*len(x[m1,m2,qq, noise])+1)
+                test_signal_length = int(1/2*len(x[m1,m2,qq, noise]))
 
                 #randomize signal events
                 random_test_signal_length = random.randint(0, test_signal_length - 1)
@@ -240,11 +250,17 @@ if __name__ == "__main__":
     m1 = args.m1
     m2 = args.m2
     step = args.step
+    qq = "qq"
     
     if args.case == "Loss":
         eval_loss_landscape(args.feature_dims, args.parameters, args.m1, args.m2, args.step, decay)
+        #if using extra QCD background
+        if len(x[0,0,qq, noise]) > 121352:
+            extra = True
+
+        extra_str = "_extra" if extra else ""
         
-        filename = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}.npy"
+        filename = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra_str}_{model_name}.npy"
         z = np.load(filename, allow_pickle = True).item()
         sigfrac = 0.1
         elv = 60
@@ -252,7 +268,7 @@ if __name__ == "__main__":
 
         create_3D_loss_manifold(sigfrac, m1, m2, z, step, elv, azim, save = True)
         loss_landscape_nofit(sigfrac, m1, m2, z, step, save = True)
-        img_paths = [f"plots/landscapes/l_{float(m1)}{float(m2)}.png", f"plots/manifolds/lm_{float(m1)}{float(m2)}.png"]
+        img_paths = [f"plots/landscapes/l_{float(m1)}{float(m2)}_{decay}{extra_str}.png", f"plots/manifolds/lm_{float(m1)}{float(m2)}_{decay}{extra_str}.png"]
         send_slack_plot(img_paths)
         send_slack_message("Done!")
     

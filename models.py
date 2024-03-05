@@ -72,7 +72,7 @@ def compileSemiWeakly(sigfrac, model, feature_dims, params, m1, m2, w1, w2):
     model32 = Model(inputs = inputs_hold2, outputs = simple_model2)
 
     inputs_hold3 = tf.keras.Input(shape=(1,))
-    simple_model3 = tf.exp(Dense(1,use_bias = False,activation='linear',kernel_initializer=tf.keras.initializers.Constant(-1))(inputs_hold3))
+    simple_model3 = tf.exp(Dense(1,use_bias = False,activation='linear',kernel_initializer=tf.keras.initializers.Constant(-6))(inputs_hold3))
     model33 = Model(inputs = inputs_hold3, outputs = simple_model3)
 
     inputs = tf.keras.Input(shape=(feature_dims,))
@@ -111,7 +111,7 @@ def compileSemiWeakly3Prong(sigfrac, model_qq, model_qqq, feature_dims, paramete
     model32 = Model(inputs = inputs_hold2, outputs = simple_model2)
 
     inputs_hold3 = tf.keras.Input(shape=(1,))
-    simple_model3 = tf.exp(Dense(1,use_bias = False,activation='linear',kernel_initializer=tf.keras.initializers.Constant(-1))(inputs_hold3))
+    simple_model3 = tf.exp(Dense(1,use_bias = False,activation='linear',kernel_initializer=tf.keras.initializers.Constant(-4))(inputs_hold3))
     model33 = Model(inputs = inputs_hold3, outputs = simple_model3)
 
     inputs_hold4 = tf.keras.Input(shape=(1,))

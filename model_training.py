@@ -11,10 +11,12 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 import os
 from utils import send_slack_message, send_slack_plot
+import pickle
 
 #training data
-x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qqq_extra.npy")
-y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qqq_extra.npy")
+decay = "qq"
+x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra.npy")
+y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra.npy")
 X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 42)
 
 pscratch_dir = "/pscratch/sd/g/gupsingh/"
@@ -59,22 +61,26 @@ def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=Fa
         history_parametrized = model_parametrized.fit(X_train, Y_train, epochs=config.epochs, validation_data=(X_val, Y_val), batch_size=config.batch_size, callbacks=[es, WandbCallback()])
         
     if return_history:
+        with open("history_parametrized.pkl", "wb") as f:
+            pickle.dump(history_parametrized, f)
         return model_parametrized, history_parametrized
     else:
         return model_parametrized
 
 model_parametrized, history_parametrized = train_parametrized(X_train_qq, Y_train_qq, X_val_qq, Y_val_qq, config, return_history = True)
-model_parametrized.save(pscratch_dir + run_name)
+model_parametrized.save(pscratch_dir + run_name + f"{decay}")
+
+
 
 wandb.finish()
 
 num_epochs_trained = len(history_parametrized.history['loss'])
-val_accuracy = history_parametrized['val_accuracy']
+val_accuracy = history_parametrized.history['val_accuracy']
 
 #Diagonistic Plot
 plt.figure()
-plt.plot(history_parametrized['loss'], label='Training Loss')
-plt.plot(history_parametrized['val_loss'], label='Validation Loss')
+plt.plot(history_parametrized.history['loss'], label='Training Loss')
+plt.plot(history_parametrized.history['val_loss'], label='Validation Loss')
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.title('Training and Validation Loss')

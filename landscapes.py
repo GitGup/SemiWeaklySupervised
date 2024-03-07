@@ -15,7 +15,7 @@ from models import compileSemiWeakly, compileSemiWeakly3Prong
 noise_dims = 0
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
 
-model_name = "swift-night-80"
+model_name = "eager-rain-75"
 model_path = "/pscratch/sd/g/gupsingh/" + model_name
 #model_path = "/pscratch/sd/g/gupsingh/copper-serenity-64qq"
 #model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
@@ -36,7 +36,7 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
         extra = True
         
     extra_str = "_extra" if extra else ""
-    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra_str}_{model_name}.npy"
+    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra_str}_{model_name}exp4.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):

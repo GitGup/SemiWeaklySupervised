@@ -11,12 +11,11 @@ import argparse
 import os
 from utils import send_slack_message, send_slack_plot, get_stuck_weights
 
-
 #load everything required
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = 0)
 x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra.npy")
 y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra.npy")
-model_name = "swift-night-80"
+model_name = "eager-rain-75"
 model_path = "/pscratch/sd/g/gupsingh/" + model_name
 model_qq = tf.keras.models.load_model(model_path)
 #es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
@@ -28,12 +27,7 @@ model_qq = tf.keras.models.load_model(model_path)
 qq = "qq"
 noise = False
 epsilon = 1e-4
-
-from utils import get_stuck_weights
-
 noise = False
-epsilon = 1e-4
-#es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
@@ -110,12 +104,12 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
                 train_data = int(1/4 * len(x[0,0, qq, noise]))
                 test_signal = int(1/2*len(x[m1,m2, qq, noise]))
 
-                x_data_ = np.concatenate([x[0,0, qq, noise][test_background:],signal])
+                x_data_ = np.concatenate([x[0,0, qq, noise][test_background:], signal])
                 y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
 
                 X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
 
-                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=50,
+                history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=1000,
                                                        validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0, callbacks = [es])
 
                 print(f"m1: {m1}",f"m2: {m2}", f"w1: {model_semiweak.trainable_weights[0].numpy()[0][0]}", f"w2: {model_semiweak.trainable_weights[1].numpy()[0][0]}")
@@ -143,10 +137,11 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
             y = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
 
             #get the lowest scores from dictionary of losses and scores
-            top_items = sorted(scoreLossdict.items())[:1]
-            lowest_losses = [x[0] for x in top_items]
-            top_scores = [scoreLossdict[loss] for loss in lowest_losses]
-            fpr, tpr, _ = metrics.roc_curve(y, np.median(top_scores, axis = 0))
+            scoreLossdict[(sigfrac, injection)] = ((min(myhistory.history["loss"])), scores)
+    
+            top_items = sorted(scoreLossdict.values())[:5]
+            lowest_loss_scores = [x[1] for x in top_items]
+            fpr, tpr, _ = metrics.roc_curve(y, np.median(lowest_loss_scores, axis = 0))
             tuple_rates_semiweak[(sigfrac, injection)] = (fpr, tpr)
 
             epsilon = 1e-4
@@ -199,6 +194,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
     np.save(f"data/stuck_weights_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", stuck_weights)
     np.save(f"data/tuplerates_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_semiweak)
     np.save(f"data/tuplerates2_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_weak)
+    np.save(f"data/scoreLossdict{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", scoreLossdict)
 
     # np.save(f"data/msic1_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
     # np.save(f"data/msic2_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)

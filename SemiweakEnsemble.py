@@ -27,7 +27,6 @@ model_qq = tf.keras.models.load_model(model_path)
 qq = "qq"
 noise = False
 epsilon = 1e-4
-noise = False
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
@@ -51,7 +50,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
     qq = decay
     test_signal = int(1/2*len(x[m1,m2, qq, noise]))
 
-    sigspace = np.logspace(-3, -1, 10)
+    sigspace = np.logspace(-3.5, -1.3, 10)
     for sigfrac in sigspace:
         print(f"At {sigfrac} for decay {decay}")
 
@@ -137,9 +136,9 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
             y = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
 
             #get the lowest scores from dictionary of losses and scores
-            scoreLossdict[(sigfrac, injection)] = ((min(myhistory.history["loss"])), scores)
+            scoreLossdict[(sigfrac, injection)] = ((min(history_semiweak.history["loss"])), scores)
     
-            top_items = sorted(scoreLossdict.values())[:5]
+            top_items = sorted(scoreLossdict.values())[:3]
             lowest_loss_scores = [x[1] for x in top_items]
             fpr, tpr, _ = metrics.roc_curve(y, np.median(lowest_loss_scores, axis = 0))
             tuple_rates_semiweak[(sigfrac, injection)] = (fpr, tpr)
@@ -187,28 +186,22 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
             extra = True
             
         extra_str = "_extra" if extra else ""
-        # np.save(f"data/maxsicandstd1_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
-        # np.save(f"data/maxsicandstd2_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
 
     stuck_weights = get_stuck_weights(sigspace, injections, m_initializations, m1, m2, weight_list1_runs, weight_list2_runs, decay)
-    np.save(f"data/stuck_weights_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", stuck_weights)
-    np.save(f"data/tuplerates_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_semiweak)
-    np.save(f"data/tuplerates2_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_weak)
-    np.save(f"data/scoreLossdict{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", scoreLossdict)
+    np.save(f"data/script/stuck_weights_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", stuck_weights)
+    np.save(f"data/script/tuplerates_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_semiweak)
+    np.save(f"data/script/tuplerates2_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_weak)
+    np.save(f"data/script/scoreLossdict{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", scoreLossdict)
 
-    # np.save(f"data/msic1_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd1)
-    # np.save(f"data/msic2_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", maxsicandstd2)
-    # np.save(f"data/std1_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", std1_runs)
-    # np.save(f"data/std2_median_script{float(m1)}{float(m2)}_{decay}{extra}.npy", std2_runs)
-    np.save(f"data/weight_list1_runs_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list1_runs)
-    np.save(f"data/weight_list2_runs_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list2_runs)
-    np.save(f"data/weight_list3_runs_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list3_runs)
+    np.save(f"data/script/weight_list1_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list1_runs)
+    np.save(f"data/script/weight_list2_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list2_runs)
+    np.save(f"data/script/weight_list3_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list3_runs)
 
-    np.save(f"data/score1_injections_raw_runs_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", score1_injections_raw_runs)
-    np.save(f"data/score2_injections_raw_runs_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", score2_injections_raw_runs)
+    np.save(f"data/script/score1_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", score1_injections_raw_runs)
+    np.save(f"data/script/score2_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", score2_injections_raw_runs)
     if decay == "qqq":
-        np.save(f"data/weight_list4_runs_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list4_runs)
-    np.save(f"data/initial_weights_runs_script{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", initial_weights_runs)
+        np.save(f"data/script/weight_list4_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list4_runs)
+    np.save(f"data/script/initial_weights_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", initial_weights_runs)
     
 if __name__ == "__main__":
     mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]

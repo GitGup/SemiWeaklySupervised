@@ -123,8 +123,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
                 scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
                 #per-event probability
                 score1_kruns.append(scores)
-                scoreLossdict[(min(history_semiweak.history["loss"]))] = scores
-
+                
             #kruns finished
             weight_list1_injections.append(weight_list1_kruns)
             weight_list2_injections.append(weight_list2_kruns)

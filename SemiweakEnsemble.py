@@ -13,31 +13,30 @@ from utils import send_slack_message, send_slack_plot, get_stuck_weights
 
 #load everything required
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = 0)
-x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra.npy")
-y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qqq_extra.npy")
-model_name = "deep-forest-83qq"
-# model_path = "/pscratch/sd/g/gupsingh/" + model_name
-# model_qq = tf.keras.models.load_model(model_path)
+x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra_noise.npy")
+y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra_noise.npy")
+model_name = "swift-firebrand-91-noise"
+model_path = "/pscratch/sd/g/gupsingh/" + model_name
+model_qq = tf.keras.models.load_model(model_path)
 
-model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/deep-forest-83qq")
-model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
+# model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/deep-forest-83qq")
+# model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
 
-model_qqq._name = "model_qqq"
-for l in model_qqq.layers:
-    l._name = f"{l.name}_model_qqq"
-
+# model_qqq._name = "model_qqq"
+# for l in model_qqq.layers:
+#     l._name = f"{l.name}_model_qqq"
 
 #Loop over signal injection amounts M
 #For a given signal injection amount, inject events according to N ~ Poission(M)
 #For a given N injected events, initialize the network with w ~ Uniform.  Do this k times.
 
-qq = "qqq"
-noise = False
+qq = "qq"
+noise = True
 epsilon = 1e-4
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
-def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializations, decay = "qqq"):
+def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializations, decay = "qq"):
     maxsicandstd1 = {}
     maxsicandstd2 = {}
     msic1_runs = []
@@ -200,20 +199,20 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         extra_str = "_extra" if extra else ""
 
     stuck_weights = get_stuck_weights(sigspace, injections, m_initializations, m1, m2, weight_list1_runs, weight_list2_runs, decay)
-    np.save(f"data/script/stuck_weights_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", stuck_weights)
-    np.save(f"data/script/tuplerates_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_semiweak)
-    np.save(f"data/script/tuplerates2_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", tuple_rates_weak)
-    np.save(f"data/script/scoreLossdict{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", scoreLossdict)
+    np.save(f"data/script/stuck_weights_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", stuck_weights)
+    np.save(f"data/script/tuplerates_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", tuple_rates_semiweak)
+    np.save(f"data/script/tuplerates2_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", tuple_rates_weak)
+    np.save(f"data/script/scoreLossdict{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", scoreLossdict)
 
-    np.save(f"data/script/weight_list1_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list1_runs)
-    np.save(f"data/script/weight_list2_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list2_runs)
-    np.save(f"data/script/weight_list3_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list3_runs)
+    np.save(f"data/script/weight_list1_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list1_runs)
+    np.save(f"data/script/weight_list2_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list2_runs)
+    np.save(f"data/script/weight_list3_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list3_runs)
 
-    np.save(f"data/script/score1_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", score1_injections_raw_runs)
-    np.save(f"data/script/score2_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", score2_injections_raw_runs)
+    np.save(f"data/script/score1_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", score1_injections_raw_runs)
+    np.save(f"data/script/score2_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", score2_injections_raw_runs)
     if decay == "qqq":
-        np.save(f"data/script/weight_list4_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", weight_list4_runs)
-    np.save(f"data/script/initial_weights_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}.npy", initial_weights_runs)
+        np.save(f"data/script/weight_list4_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list4_runs)
+    np.save(f"data/script/initial_weights_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", initial_weights_runs)
     
 if __name__ == "__main__":
     mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
@@ -238,5 +237,5 @@ if __name__ == "__main__":
     "```"
 )
     send_slack_message(message)
-    train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations, decay = "qqq")
+    train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations, decay = "qq")
     send_slack_message("Done!")

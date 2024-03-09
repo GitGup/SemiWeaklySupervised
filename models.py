@@ -87,7 +87,7 @@ def compileSemiWeakly(sigfrac, model, feature_dims, params, m1, m2, w1, w2):
     ws = LLR_xs / (1.+LLR_xs)
 
     SemiWeakModel = Model(inputs = inputs, outputs = ws)
-    SemiWeakModel.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate = 0.05))
+    SemiWeakModel.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate = 0.05, clipvalue=0.0001, clipnorm=0.0001))
     return SemiWeakModel
 
 def compileSemiWeakly3Prong(sigfrac, model_qq, model_qqq, feature_dims, parameters, m1, m2, w1, w2):
@@ -111,10 +111,10 @@ def compileSemiWeakly3Prong(sigfrac, model_qq, model_qqq, feature_dims, paramete
     model33 = Model(inputs = inputs_hold3, outputs = simple_model3)
 
     inputs_hold4 = tf.keras.Input(shape=(1,))
-    simple_model4 = Dense(1,use_bias = False,activation='sigmoid',kernel_initializer=tf.keras.initializers.Constant(1.))(inputs_hold4)
+    simple_model4 = Dense(1,use_bias = False,activation='sigmoid',kernel_initializer=tf.keras.initializers.Constant(.37))(inputs_hold4)
     model34 = Model(inputs = inputs_hold4, outputs = simple_model4)
 
-    inputs = tf.keras.Input(shape=(6,))
+    inputs = tf.keras.Input(shape=(feature_dims,))
     inputs2 = tf.keras.layers.concatenate([inputs,model3(tf.ones_like(inputs)[:,0]),model32(tf.ones_like(inputs)[:,0])])
     hidden_layer_1 = model_qq(inputs2)
     hidden_layer_13 = model_qqq(inputs2)
@@ -127,5 +127,5 @@ def compileSemiWeakly3Prong(sigfrac, model_qq, model_qqq, feature_dims, paramete
         LLR_xs_fixed = 1 + model33(tf.ones_like(inputs)[:,0])*model34(tf.ones_like(inputs)[:,0]) * LLR3 + (1-model34(tf.ones_like(inputs)[:,0]))*LLR2*model33(tf.ones_like(inputs)[:,0]) - model33(tf.ones_like(inputs)[:,0])
     ws = LLR_xs_fixed / (1.+LLR_xs_fixed+0.0001)
     SemiWeak3Prong = Model(inputs = inputs, outputs = ws)
-    SemiWeak3Prong.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate = 0.05))
+    SemiWeak3Prong.compile(loss='binary_crossentropy', optimizer=tf.keras.optimizers.Adam(learning_rate = 0.05, clipvalue=0.0001, clipnorm=0.0001))
     return SemiWeak3Prong

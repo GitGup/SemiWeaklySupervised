@@ -14,23 +14,30 @@ from utils import send_slack_message, send_slack_plot, get_stuck_weights
 #load everything required
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = 0)
 x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra.npy")
-y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra.npy")
-model_name = "eager-rain-75"
-model_path = "/pscratch/sd/g/gupsingh/" + model_name
-model_qq = tf.keras.models.load_model(model_path)
-#es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qqq_extra.npy")
+model_name = "deep-forest-83qq"
+# model_path = "/pscratch/sd/g/gupsingh/" + model_name
+# model_qq = tf.keras.models.load_model(model_path)
+
+model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/deep-forest-83qq")
+model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
+
+model_qqq._name = "model_qqq"
+for l in model_qqq.layers:
+    l._name = f"{l.name}_model_qqq"
+
 
 #Loop over signal injection amounts M
 #For a given signal injection amount, inject events according to N ~ Poission(M)
 #For a given N injected events, initialize the network with w ~ Uniform.  Do this k times.
 
-qq = "qq"
+qq = "qqq"
 noise = False
 epsilon = 1e-4
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
-def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializations, decay = "qq"):
+def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializations, decay = "qqq"):
     maxsicandstd1 = {}
     maxsicandstd2 = {}
     msic1_runs = []
@@ -50,7 +57,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
     qq = decay
     test_signal = int(1/2*len(x[m1,m2, qq, noise]))
 
-    sigspace = np.logspace(-3.5, -1.3, 10)
+    sigspace = np.logspace(-3, -1, 10)
     for sigfrac in sigspace:
         print(f"At {sigfrac} for decay {decay}")
 
@@ -123,7 +130,9 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
                 scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
                 #per-event probability
                 score1_kruns.append(scores)
-                
+                scoreLossdict[(min(history_semiweak.history["loss"]))] = scores
+                #scoreLossdict[(sigfrac, injections, k)] = ((min(history_semiweak.history["loss"])), scores)
+
             #kruns finished
             weight_list1_injections.append(weight_list1_kruns)
             weight_list2_injections.append(weight_list2_kruns)
@@ -135,14 +144,18 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
             y = np.concatenate([np.zeros(test_background),np.ones(test_signal)])
 
             #get the lowest scores from dictionary of losses and scores
-            scoreLossdict[(sigfrac, injection)] = ((min(history_semiweak.history["loss"])), scores)
-    
-            top_items = sorted(scoreLossdict.values())[:3]
-            lowest_loss_scores = [x[1] for x in top_items]
-            fpr, tpr, _ = metrics.roc_curve(y, np.median(lowest_loss_scores, axis = 0))
+            # top_items = sorted(scoreLossdict.values())[:3]
+            # lowest_loss_scores = [x[1] for x in top_items]
+            # fpr, tpr, _ = metrics.roc_curve(y, np.median(lowest_loss_scores, axis = 0))
+            # tuple_rates_semiweak[(sigfrac, injection)] = (fpr, tpr)
+            top_items = sorted(scoreLossdict.items())[:3]
+            lowest_losses = [x[0] for x in top_items]
+            top_scores = [scoreLossdict[loss] for loss in lowest_losses]
+            fpr, tpr, _ = metrics.roc_curve(y, np.median(top_scores, axis = 0))
             tuple_rates_semiweak[(sigfrac, injection)] = (fpr, tpr)
 
             epsilon = 1e-4
+
             msic1_kmedian = np.max(tpr/np.sqrt(fpr+epsilon))
             score1_injections.append(score1_kruns)
             msic1_median.append(msic1_kmedian)
@@ -225,5 +238,5 @@ if __name__ == "__main__":
     "```"
 )
     send_slack_message(message)
-    train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations)
+    train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations, decay = "qqq")
     send_slack_message("Done!")

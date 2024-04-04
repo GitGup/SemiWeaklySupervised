@@ -13,10 +13,10 @@ from utils import send_slack_message, send_slack_plot, get_stuck_weights
 
 #load everything required
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = 0)
-x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra_noise.npy")
-y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra_noise.npy")
-model_name = "swift-firebrand-91-noise"
-model_path = "/pscratch/sd/g/gupsingh/" + model_name
+# #model_name = "decent-sun-87qq"
+model_name = "easy-monkey-107qq_reduced"
+pdir = "/pscratch/sd/g/gupsingh/"
+model_path =  pdir + model_name
 model_qq = tf.keras.models.load_model(model_path)
 
 # model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/deep-forest-83qq")
@@ -30,13 +30,13 @@ model_qq = tf.keras.models.load_model(model_path)
 #For a given signal injection amount, inject events according to N ~ Poission(M)
 #For a given N injected events, initialize the network with w ~ Uniform.  Do this k times.
 
-qq = "qq"
 noise = True
 epsilon = 1e-4
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
 def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializations, decay = "qq"):
+    print(decay)
     maxsicandstd1 = {}
     maxsicandstd2 = {}
     msic1_runs = []
@@ -53,10 +53,12 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
     tuple_rates_semiweak = {}
     tuple_rates_weak = {}
 
-    qq = decay
+    qq = "qq"
+    qqq = "qqq"
+    alpha = 0.5
     test_signal = int(1/2*len(x[m1,m2, qq, noise]))
 
-    sigspace = np.logspace(-3, -1, 10)
+    sigspace = np.logspace(-3.5, -1.3, 10)
     for sigfrac in sigspace:
         print(f"At {sigfrac} for decay {decay}")
 
@@ -97,22 +99,32 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
                 initial_weights.append((w1, w2))
 
                 print(f"Initialization: {w1} {w2}")
-
-                if decay == "qq":
-                    model_semiweak = compileSemiWeakly(sigfrac, model_qq, feature_dims, parameters, m1, m2, w1, w2)
-
-                if decay == "qqq":
-                    model_semiweak = compileSemiWeakly3Prong(sigfrac, model_qq, model_qqq, feature_dims, parameters, m1, m2, w1, w2)
-
+                
                 test_background = int(1/2 * len(x[0,0, qq, noise])+1)
                 train_reference = int(1/4 *len(x[0,0, qq, noise]))
                 train_data = int(1/4 * len(x[0,0, qq, noise]))
                 test_signal = int(1/2*len(x[m1,m2, qq, noise]))
 
-                x_data_ = np.concatenate([x[0,0, qq, noise][test_background:], signal])
-                y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
+                if decay == "qq":
+                    model_semiweak = compileSemiWeakly(sigfrac, model_qq, feature_dims, parameters, m1, m2, w1, w2)
+                    x_data_ = np.concatenate([x[0,0, qq, noise][test_background:], signal])
+                    y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
 
-                X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
+                    X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
+
+                if decay == "qqq":
+                    model_semiweak = compileSemiWeakly3Prong(sigfrac, model_qq, model_qqq, feature_dims, parameters, m1, m2, w1, w2)
+                    
+                    print(f"Number of 3 Pronged Evengs: {sigfrac * N *alpha}")
+                    print(f"Number of 2 Pronged Evengs: {sigfrac * N *(1-alpha)}")
+
+                    #mix both samples
+                    signal_mixed = np.concatenate([x[m1, m2, decay, noise][int(random_test_signal_length):int(random_test_signal_length) + int(sigfrac * N * alpha)], x[m1, m2, qq, noise][int(random_test_signal_length):int(random_test_signal_length) + int(sigfrac * N * (1-alpha))]])
+
+                    x_data_mixed = np.concatenate([x[0,0, qq, noise][test_background:],signal_mixed])
+                    y_data_mixed = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal_mixed))])
+
+                    X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_mixed, y_data_mixed, test_size=0.5, random_state = 42)
 
                 history_semiweak = model_semiweak.fit(X_train_[:,0:feature_dims], Y_train_, epochs=1000,
                                                        validation_data=(X_val_[:,0:feature_dims], Y_val_),batch_size=1024, verbose = 0, callbacks = [es])
@@ -126,7 +138,17 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
                 if decay == "qqq":
                     weight_list4_kruns+=[model_semiweak.trainable_weights[3].numpy()[0][0]]
 
-                scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
+                # scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
+                if (int(np.round(w1)), int(np.round(w2))) == (m1, m2):
+                    #if the masses don't swap
+                    scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
+                elif (int(np.round(w1)), int(np.round(w2))) == (m2, m1):
+                    #if they do swap
+                    print("Swapped")
+                    scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m2,m1, qq, noise][0:test_signal]]),batch_size=1024)
+                else:
+                    #if it doesn't get the masses at all (low s/b)
+                    scores = model_semiweak.predict(np.concatenate([x[0,0, qq, noise][0:test_background],x[m1,m2, qq, noise][0:test_signal]]),batch_size=1024)
                 #per-event probability
                 score1_kruns.append(scores)
                 scoreLossdict[(min(history_semiweak.history["loss"]))] = scores
@@ -199,20 +221,20 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
         extra_str = "_extra" if extra else ""
 
     stuck_weights = get_stuck_weights(sigspace, injections, m_initializations, m1, m2, weight_list1_runs, weight_list2_runs, decay)
-    np.save(f"data/script/stuck_weights_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", stuck_weights)
-    np.save(f"data/script/tuplerates_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", tuple_rates_semiweak)
-    np.save(f"data/script/tuplerates2_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", tuple_rates_weak)
-    np.save(f"data/script/scoreLossdict{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", scoreLossdict)
+    np.save(pdir + f"data/script/stuck_weights_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", stuck_weights)
+    np.save(pdir + f"data/script/tuplerates_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", tuple_rates_semiweak)
+    np.save(pdir + f"data/script/tuplerates2_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", tuple_rates_weak)
+    np.save(pdir + f"data/script/scoreLossdict{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", scoreLossdict)
 
-    np.save(f"data/script/weight_list1_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list1_runs)
-    np.save(f"data/script/weight_list2_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list2_runs)
-    np.save(f"data/script/weight_list3_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list3_runs)
+    np.save(pdir + f"data/script/weight_list1_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list1_runs)
+    np.save(pdir + f"data/script/weight_list2_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list2_runs)
+    np.save(pdir + f"data/script/weight_list3_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list3_runs)
 
-    np.save(f"data/script/score1_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", score1_injections_raw_runs)
-    np.save(f"data/script/score2_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", score2_injections_raw_runs)
+    np.save(pdir + f"data/script/score1_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", score1_injections_raw_runs)
+    np.save(pdir + f"data/script/score2_injections_raw_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", score2_injections_raw_runs)
     if decay == "qqq":
-        np.save(f"data/script/weight_list4_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list4_runs)
-    np.save(f"data/script/initial_weights_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", initial_weights_runs)
+        np.save(pdir + f"data/script/weight_list4_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", weight_list4_runs)
+    np.save(pdir + f"data/script/initial_weights_runs_{float(m1)}{float(m2)}_{decay}{extra_str}{model_name}{noise}.npy", initial_weights_runs)
     
 if __name__ == "__main__":
     mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]

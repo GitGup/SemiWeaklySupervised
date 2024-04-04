@@ -15,8 +15,18 @@ import pickle
 
 #training data
 decay = "qq"
-x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra.npy")
-y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra.npy")
+x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra_noise20.npy")
+y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra_noise20.npy")
+
+noise_dims_add = 0
+if noise_dims_add == 0:
+    noise = False
+else:
+    noise = True
+    
+noise_dims_remove = [i for i in range(np.shape(x_data_qq)[1] - (3 + noise_dims_add), 5, -1)]
+x_data_qq = np.delete(x_data_qq, noise_dims_remove, axis = 1)
+
 X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 42)
 
 pscratch_dir = "/pscratch/sd/g/gupsingh/"
@@ -36,30 +46,32 @@ config = {
     "batch_size": 1024
 }
 
-wandb.init(project="SemiWeakly", 
-           group="Parametrized", 
-           entity='gup-singh', 
+wandb.init(project="SemiWeakly",
+           group="Parametrized",
+           entity='gup-singh',
            mode = 'online',
            config=config)
 
 config = wandb.config
 run_name = wandb.run.name
-es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+key = f"{run_name}{decay}{noise_dims_add}"
+es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
 def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=False):
+    print(np.shape(X_train))
     model_parametrized = Sequential()
     model_parametrized.add(Dense(config["layer_1_neurons"], input_dim=np.shape(X_train_qq)[1], activation=config["activation"]))
-    model_parametrized.add(BatchNormalization())
+    #model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config["layer_2_neurons"], activation=config["activation"]))
-    model_parametrized.add(BatchNormalization())
+    #model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config["layer_3_neurons"], activation=config["activation"]))
-    model_parametrized.add(BatchNormalization())
+    #model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config.output_neurons, activation=config["output_activation"]))
     model_parametrized.compile(loss=config["loss"], optimizer=tf.keras.optimizers.Adam(learning_rate=config["learning_rate"]), metrics=['accuracy'])
 
     with tf.device('/GPU:0'):
         history_parametrized = model_parametrized.fit(X_train, Y_train, epochs=config.epochs, validation_data=(X_val, Y_val), batch_size=config.batch_size, callbacks=[es, WandbCallback()])
-        
+
     if return_history:
         with open("history_parametrized.pkl", "wb") as f:
             pickle.dump(history_parametrized, f)
@@ -67,27 +79,22 @@ def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=Fa
     else:
         return model_parametrized
 
+send_slack_message("Training: ",key)
 model_parametrized, history_parametrized = train_parametrized(X_train_qq, Y_train_qq, X_val_qq, Y_val_qq, config, return_history = True)
-model_parametrized.save(pscratch_dir + run_name + f"{decay}")
-
-
+model_parametrized.save(pscratch_dir + key)
 
 wandb.finish()
-
-num_epochs_trained = len(history_parametrized.history['loss'])
-val_accuracy = history_parametrized.history['val_accuracy']
+send_slack_message(f"Done Training: {run_name}{decay}{noise_dims_add}")
 
 #Diagonistic Plot
-plt.figure()
-plt.plot(history_parametrized.history['loss'], label='Training Loss')
-plt.plot(history_parametrized.history['val_loss'], label='Validation Loss')
+epochs = [x for x in range(len(history_parametrized.history["loss"]))]
+plt.plot(epochs, history_parametrized.history["loss"])
+plt.plot(epochs, history_parametrized.history["val_loss"])
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.title('Training and Validation Loss')
-img_path = "plots/parametrized_trainingloss.png"
+img_path = f"plots/parametrized_trainingloss{run_name}{decay}{noise_dims_add}.png"
 plt.savefig(img_path)
 plt.legend()
 plt.show()
-
-send_slack_message(f"Done Training - Epochs: {num_epochs_trained} - Validation Accuracy: {val_accuracy}")
 send_slack_plot(img_path)

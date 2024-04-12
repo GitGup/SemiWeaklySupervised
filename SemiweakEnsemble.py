@@ -12,25 +12,44 @@ import os
 from utils import send_slack_message, send_slack_plot, get_stuck_weights
 
 #load everything required
-x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = 0)
-# #model_name = "decent-sun-87qq"
-model_name = "easy-monkey-107qq_reduced"
+noise = False
+noise_dims = 0
+x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
+model23 = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/" + "model23")
+
+mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
+for m1 in mass_range:
+    for m2 in mass_range:
+        for qq in ["qq", "qqq"]:
+            if (m1==0 and m2>0 or m2==0 and m1>0):
+                continue
+            print(m1,m2)
+            x[m1,m2, qq, noise] = np.hstack((x[m1, m2, qq, noise], model23(x[m1, m2, qq, noise]).numpy()))
+model_name = "23prong"
+
+#model_name = "robust-river-109qq10"
+#model_name = "easy-monkey-107qq_reduced"
 pdir = "/pscratch/sd/g/gupsingh/"
-model_path =  pdir + model_name
-model_qq = tf.keras.models.load_model(model_path)
+# model_path =  pdir + model_name
+# model_qq = tf.keras.models.load_model(model_path)
 
-# model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/deep-forest-83qq")
-# model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
+model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/revived-fog-121qq023")
+model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/pious-bee-128qqq023")
 
-# model_qqq._name = "model_qqq"
-# for l in model_qqq.layers:
-#     l._name = f"{l.name}_model_qqq"
+model_qqq._name = "model_qqq"
+for l in model_qqq.layers:
+    l._name = f"{l.name}_model_qqq"
 
 #Loop over signal injection amounts M
 #For a given signal injection amount, inject events according to N ~ Poission(M)
 #For a given N injected events, initialize the network with w ~ Uniform.  Do this k times.
 
-noise = True
+if noise_dims == 0:
+    noise = False
+else:
+    print("Adding Noise")
+    noise = True
+
 epsilon = 1e-4
 
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
@@ -259,5 +278,5 @@ if __name__ == "__main__":
     "```"
 )
     send_slack_message(message)
-    train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations, decay = "qq")
+    train_semiweak(args.feature_dims, args.m1, args.m2, args.parameters, args.injections, args.m_initializations, decay = "qqq")
     send_slack_message("Done!")

@@ -12,21 +12,25 @@ from plotting import create_3D_loss_manifold, loss_landscape_nofit
 from models import compileSemiWeakly, compileSemiWeakly3Prong
 
 #load all necessary data/files
-noise_dims = 0
+noise_dims = 10
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
-
-model_name = "eager-rain-75"
-model_path = "/pscratch/sd/g/gupsingh/" + model_name
-#model_path = "/pscratch/sd/g/gupsingh/copper-serenity-64qq"
-#model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/breathless-flower-61qqq")
+#model_name = "decent-sun-87qq"
+model_name = "robust-river-109qq10"
+p_dir = "/pscratch/sd/g/gupsingh/"
+model_path = p_dir + model_name
 model_qq = tf.keras.models.load_model(model_path)
 
-noise = False
+noise = True
 start_time = time.time()
 decay = "qq"
 def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
     qq = decay
-    noise = False
+    noise = True
+    alpha = 0.5
+    model_name = "robust-river-109qq10"
+    
+    # for l in model_qqq.layers:
+    #     l._name = f"{l.name}_model_qqq"
     start_time = time.time()
     #check if loss dictionary exists, if it does load it, if not create empty one
     dir_path = os.getcwd()
@@ -36,7 +40,7 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
         extra = True
         
     extra_str = "_extra" if extra else ""
-    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra_str}_{model_name}exp4.npy"
+    file_name = f"data/landscapes/z_{feature_dims}_{parameters}_{m1}{m2}_{step}_{decay}{extra_str}_{model_name}_{noise_dims}.npy"
     file_path = os.path.join(dir_path, file_name)
     
     if os.path.exists(file_path):
@@ -44,11 +48,10 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
     else:
         print("Dictionary doesn't exist, creating one...")
         z = {}
-        
+    
     losses_list = []
     epsilon = 1e-4
-    #sigspace = np.logspace(-3,-1,10)
-    sigspace = [1e-6]
+    sigspace = np.logspace(-3.5, -1.3, 10)
     
     start = 0.5
     end = 6
@@ -65,25 +68,15 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
                     print(f"reached {w1} {w2}")
                 count+=1
                 #print(w1, w2)
-
-                if decay == "qq":
-                    for l in model_qq.layers:
-                        l.trainable=False
-                    model_semiweak = compileSemiWeakly(sigfrac, model_qq, feature_dims, parameters, m1, m2, w1, w2)
-                    
-                if decay == "qqq":
-                    for l in model_qqq.layers:
-                        l.trainable=False
-                    model_semiweak = compileSemiWeakly3Prong(model_qq, model_qqq, feature_dims, parameters, m1, m2, w1, w2)
-
+                
                 m1 = m1
                 m2 = m2
                 
                 #if computed this mass pair, break
-                key = (sigfrac,m1,m2, decay)
+                key = (sigfrac, m1, m2, decay)
                 if key in z:
                     break
-
+                
                 test_background = int(1/2 *len(x[0,0, qq, noise])+1)
                 train_background = int(1/4 * len(x[0,0,qq, noise]))
                 train_data = int(1/4 * len(x[0,0,qq, noise]))
@@ -91,18 +84,35 @@ def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
                 #signal
                 test_signal_length = int(1/2*len(x[m1,m2,qq, noise]))
 
-                #randomize signal events
-                random_test_signal_length = random.randint(0, test_signal_length - 1)
-                N = int(1/4 * (len(x[0,0,qq, noise])))
-                signal = x[m1, m2,qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
+                if decay == "qq":
+                    model_qq = tf.keras.models.load_model(f"/pscratch/sd/g/gupsingh/{model_name}")
+                    model_semiweak = compileSemiWeakly(sigfrac, model_qq, feature_dims, parameters, m1, m2, w1, w2)
+                    
+                    #randomize signal events
+                    random_test_signal_length = random.randint(0, test_signal_length - 1)
+                    N = int(1/4 * (len(x[0,0,qq, noise])))
+                    signal = x[m1, m2,qq, noise][random_test_signal_length:random_test_signal_length + int(sigfrac*N)]
+                    
+                    x_data_ = np.concatenate([x[0,0,qq, noise][test_background:],signal])
+                    y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
+                    
+                    X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
 
-                print(f"---------------SIGNAL AMOUNT: {len(signal)} -----------")
 
-                x_data_ = np.concatenate([x[0,0,qq, noise][test_background:],signal])
-                y_data_ = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal))])
+                if decay == "qqq":
+                    model_semiweak = compileSemiWeakly3Prong(model_qq, model_qqq, feature_dims, parameters, m1, m2, w1, w2)
+                    
+                    print(f"Number of 3 Pronged Evengs: {sigfrac * N *alpha}")
+                    print(f"Number of 2 Pronged Evengs: {sigfrac * N *(1-alpha)}")
 
-                X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_, y_data_, test_size=0.5, random_state = 42)
-                
+                    #mix both samples
+                    signal_mixed = np.concatenate([x[m1, m2, decay, noise][int(random_test_signal_length):int(random_test_signal_length) + int(sigfrac * N * alpha)], x[m1, m2, qq, noise][int(random_test_signal_length):int(random_test_signal_length) + int(sigfrac * N * (1-alpha))]])
+
+                    x_data_mixed = np.concatenate([x[0,0, qq, noise][test_background:],signal_mixed])
+                    y_data_mixed = np.concatenate([np.zeros(train_reference),np.ones(train_data),np.ones(len(signal_mixed))])
+                    
+                    X_train_, X_val_, Y_train_, Y_val_ = train_test_split(x_data_mixed, y_data_mixed, test_size=0.5, random_state = 42)
+
                 with tf.device('/GPU:0'):
                     loss = model_semiweak.evaluate(X_val_, Y_val_, verbose = 0)
                 losses_list.append(loss)

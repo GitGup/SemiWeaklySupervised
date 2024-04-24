@@ -14,18 +14,24 @@ from utils import send_slack_message, send_slack_plot
 import pickle
 
 #training data
-decay = "qq"
-x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra_noise20.npy")
-y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra_noise20.npy")
+decay = "qqq"
+extra = False
+            
+extra_str = "_extra" if extra else ""
 
-noise_dims_add = 0
-if noise_dims_add == 0:
+x_data_qq = np.load(f"/pscratch/sd/g/gupsingh/x_parametrized_data_{decay}{extra_str}.npy")
+y_data_qq = np.load(f"/pscratch/sd/g/gupsingh/y_parametrized_data_{decay}{extra_str}.npy")
+# x_data_qq = np.load("/pscratch/sd/g/gupsingh/x_parametrized_data_qq_extra_23score.npy")
+# y_data_qq = np.load("/pscratch/sd/g/gupsingh/y_parametrized_data_qq_extra_23score.npy")
+
+noise_dims = 0
+if noise_dims == 0:
     noise = False
 else:
     noise = True
     
-noise_dims_remove = [i for i in range(np.shape(x_data_qq)[1] - (3 + noise_dims_add), 5, -1)]
-x_data_qq = np.delete(x_data_qq, noise_dims_remove, axis = 1)
+# noise_dims_remove = [i for i in range(np.shape(x_data_qq)[1] - (3 + noise_dims), 5, -1)]
+# x_data_qq = np.delete(x_data_qq, noise_dims_remove, axis = 1)
 
 X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 42)
 
@@ -54,18 +60,18 @@ wandb.init(project="SemiWeakly",
 
 config = wandb.config
 run_name = wandb.run.name
-key = f"{run_name}{decay}{noise_dims_add}"
+key = f"{run_name}{decay}{noise_dims}{extra_str}"
 es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
 def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=False):
     print(np.shape(X_train))
     model_parametrized = Sequential()
     model_parametrized.add(Dense(config["layer_1_neurons"], input_dim=np.shape(X_train_qq)[1], activation=config["activation"]))
-    #model_parametrized.add(BatchNormalization())
+    model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config["layer_2_neurons"], activation=config["activation"]))
-    #model_parametrized.add(BatchNormalization())
+    model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config["layer_3_neurons"], activation=config["activation"]))
-    #model_parametrized.add(BatchNormalization())
+    model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config.output_neurons, activation=config["output_activation"]))
     model_parametrized.compile(loss=config["loss"], optimizer=tf.keras.optimizers.Adam(learning_rate=config["learning_rate"]), metrics=['accuracy'])
 
@@ -79,21 +85,22 @@ def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=Fa
     else:
         return model_parametrized
 
-send_slack_message("Training: ",key)
+# send_slack_message(f"Training: " + key)
 model_parametrized, history_parametrized = train_parametrized(X_train_qq, Y_train_qq, X_val_qq, Y_val_qq, config, return_history = True)
 model_parametrized.save(pscratch_dir + key)
 
 wandb.finish()
-send_slack_message(f"Done Training: {run_name}{decay}{noise_dims_add}")
+send_slack_message(f"Done Training: " + key)
 
 #Diagonistic Plot
+plt.figure()
 epochs = [x for x in range(len(history_parametrized.history["loss"]))]
 plt.plot(epochs, history_parametrized.history["loss"])
 plt.plot(epochs, history_parametrized.history["val_loss"])
 plt.xlabel('Epoch')
 plt.ylabel('Loss')
 plt.title('Training and Validation Loss')
-img_path = f"plots/parametrized_trainingloss{run_name}{decay}{noise_dims_add}.png"
+img_path = f"plots/parametrized_trainingloss" + key + ".png"
 plt.savefig(img_path)
 plt.legend()
 plt.show()

@@ -15,30 +15,32 @@ from utils import send_slack_message, send_slack_plot, get_stuck_weights
 noise = False
 noise_dims = 0
 x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
-model23 = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/" + "model23")
 
-mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
-for m1 in mass_range:
-    for m2 in mass_range:
-        for qq in ["qq", "qqq"]:
-            if (m1==0 and m2>0 or m2==0 and m1>0):
-                continue
-            print(m1,m2)
-            x[m1,m2, qq, noise] = np.hstack((x[m1, m2, qq, noise], model23(x[m1, m2, qq, noise]).numpy()))
-model_name = "23prong"
-
-#model_name = "robust-river-109qq10"
-#model_name = "easy-monkey-107qq_reduced"
-pdir = "/pscratch/sd/g/gupsingh/"
-# model_path =  pdir + model_name
-# model_qq = tf.keras.models.load_model(model_path)
-
-model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/revived-fog-121qq023")
-model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/pious-bee-128qqq023")
+model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/decent-sun-87qq")
+model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/pumpkin-strudel-100qqq")
 
 model_qqq._name = "model_qqq"
 for l in model_qqq.layers:
     l._name = f"{l.name}_model_qqq"
+
+# mass_range = [0,0.5,1,1.5,2,2.5,3,3.5,4,4.5,5,5.5,6]
+# for m1 in mass_range:
+#     for m2 in mass_range:
+#         for qq in ["qq", "qqq"]:
+#             if (m1==0 and m2>0 or m2==0 and m1>0):
+#                 continue
+#             print(m1,m2)
+#             x[m1,m2, qq, noise] = np.hstack((x[m1, m2, qq, noise], model23(x[m1, m2, qq, noise]).numpy()))
+model_name = "23prong"
+pdir = "/pscratch/sd/g/gupsingh/"
+
+#for 3 + 2 pronged score feature
+# model_qq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/revived-fog-121qq023")
+# model_qqq = tf.keras.models.load_model("/pscratch/sd/g/gupsingh/generous-wildflower-133qqq023")
+
+# model_qqq._name = "model_qqq"
+# for l in model_qqq.layers:
+#     l._name = f"{l.name}_model_qqq"
 
 #Loop over signal injection amounts M
 #For a given signal injection amount, inject events according to N ~ Poission(M)
@@ -188,7 +190,7 @@ def train_semiweak(feature_dims, m1, m2, parameters, injections, m_initializatio
             # lowest_loss_scores = [x[1] for x in top_items]
             # fpr, tpr, _ = metrics.roc_curve(y, np.median(lowest_loss_scores, axis = 0))
             # tuple_rates_semiweak[(sigfrac, injection)] = (fpr, tpr)
-            top_items = sorted(scoreLossdict.items())[:3]
+            top_items = sorted(scoreLossdict.items())[:5]
             lowest_losses = [x[0] for x in top_items]
             top_scores = [scoreLossdict[loss] for loss in lowest_losses]
             fpr, tpr, _ = metrics.roc_curve(y, np.median(top_scores, axis = 0))

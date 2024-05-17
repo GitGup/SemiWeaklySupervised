@@ -15,7 +15,7 @@ import pickle
 
 #training data
 decay = "qqq"
-extra = False
+extra = True
             
 extra_str = "_extra" if extra else ""
 
@@ -33,7 +33,7 @@ else:
 # noise_dims_remove = [i for i in range(np.shape(x_data_qq)[1] - (3 + noise_dims), 5, -1)]
 # x_data_qq = np.delete(x_data_qq, noise_dims_remove, axis = 1)
 
-X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 42)
+X_train_qq, X_val_qq, Y_train_qq, Y_val_qq = train_test_split(x_data_qq, y_data_qq, test_size=0.5, random_state = 24)
 
 pscratch_dir = "/pscratch/sd/g/gupsingh/"
 os.environ["WANDB_DIR"] = pscratch_dir
@@ -61,17 +61,14 @@ wandb.init(project="SemiWeakly",
 config = wandb.config
 run_name = wandb.run.name
 key = f"{run_name}{decay}{noise_dims}{extra_str}"
-es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+es = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=20)
 
 def train_parametrized(X_train, Y_train, X_val, Y_val, config, return_history=False):
     print(np.shape(X_train))
     model_parametrized = Sequential()
     model_parametrized.add(Dense(config["layer_1_neurons"], input_dim=np.shape(X_train_qq)[1], activation=config["activation"]))
-    model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config["layer_2_neurons"], activation=config["activation"]))
-    model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config["layer_3_neurons"], activation=config["activation"]))
-    model_parametrized.add(BatchNormalization())
     model_parametrized.add(Dense(config.output_neurons, activation=config["output_activation"]))
     model_parametrized.compile(loss=config["loss"], optimizer=tf.keras.optimizers.Adam(learning_rate=config["learning_rate"]), metrics=['accuracy'])
 

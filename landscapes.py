@@ -1,22 +1,21 @@
 from common import *
 import os
-#from models import compileSemiWeakly #recursive issue?
 from data import load_data
 import sys
 import time
 import argparse
 
-#custom moduiles
+#custom modules
 from utils import send_slack_message, send_slack_plot
 from plotting import create_3D_loss_manifold, loss_landscape_nofit
 from models import compileSemiWeakly, compileSemiWeakly3Prong
 
 #load all necessary data/files
 noise_dims = 10
-x = load_data("/pscratch/sd/g/gupsingh/x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
+x = load_data("x_array_fixed_EXTRAQCD.pkl", noise_dims = noise_dims)
 #model_name = "decent-sun-87qq"
-model_name = "robust-river-109qq10"
-p_dir = "/pscratch/sd/g/gupsingh/"
+model_name = "model"
+p_dir = ""
 model_path = p_dir + model_name
 model_qq = tf.keras.models.load_model(model_path)
 
@@ -26,9 +25,7 @@ decay = "qq"
 def eval_loss_landscape(feature_dims, parameters, m1, m2, step, decay):
     qq = decay
     noise = True
-    alpha = 0.5
-    model_name = "robust-river-109qq10"
-    
+    alpha = 0.5    
     # for l in model_qqq.layers:
     #     l._name = f"{l.name}_model_qqq"
     start_time = time.time()
